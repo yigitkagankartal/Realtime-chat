@@ -1,8 +1,10 @@
 spring:
   datasource:
-    url: jdbc:postgresql://realtime_chat_db_5787_user:IIbLLsvXNHWepAK800QlOENUNgVzSXy0@dpg-d4mdvqm3jp1c739rpf60-a/realtime_chat_db_5787
-    username: realtime_chat_db_5787_user
-    password: IIbLLsvXNHWepAK800QlOENUNgVzSXy0
+    # Sadece host, port, db adı. User/pass buradan çıkıyor.
+    url: jdbc:postgresql://dpg-d4mqpoq4d50c73etd74g-a.frankfurt-postgres.render.com:5432/realtime_chat_db_z1z0?sslmode=require
+    username: realtime_chat_db_z1z0_user
+    password: sR6fHMxxNIVkjWOg8teXZknYthQdiY99
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -10,10 +12,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
 server:
   port: 8080
 
 jwt:
-  secret: "this-is-a-very-long-and-secure-jwt-key-for-hs256-algorithm-example-2025"
+  secret: ${JWT_SECRET:43q5c43qkfreıwrj34k5vq3jkrewfokdsap34253o123*-211}
   expiration-minutes: 60
