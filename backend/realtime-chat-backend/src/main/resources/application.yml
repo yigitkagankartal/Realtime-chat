@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/realtime_chat
+    username: postgres
+    password: UZ5V48D3
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: 8080
+
+jwt:
+  secret: "this-is-a-very-long-and-secure-jwt-key-for-hs256-algorithm-example-2025"
+  expiration-minutes: 60

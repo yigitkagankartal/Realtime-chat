@@ -1,0 +1,64 @@
+import api from "./client";
+export interface UserListItem {
+  id: number;
+  email: string;
+  displayName: string;
+}
+
+export interface ConversationResponse {
+  id: number;
+  user1Id: number;
+  user1Name: string;
+  user2Id: number;
+  user2Name: string;
+}
+
+export type MessageStatus = "SENT" | "DELIVERED" | "SEEN";
+
+export interface ChatMessageResponse {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  content: string;
+  createdAt: string;
+  status?: MessageStatus; // <-- yeni alan (opsiyonel, backend ekleyince dolacak)
+}
+
+export const listUsers = async (): Promise<UserListItem[]> => {
+  const res = await api.get<UserListItem[]>("/api/users");
+  return res.data;
+};
+
+export const listConversations = async (): Promise<ConversationResponse[]> => {
+  const res = await api.get<ConversationResponse[]>("/api/conversations");
+  return res.data;
+};
+
+export const createOrGetConversation = async (
+  otherUserId: number
+): Promise<ConversationResponse> => {
+  const res = await api.post<ConversationResponse>("/api/conversations", {
+    otherUserId,
+  });
+  return res.data;
+};
+
+export const getMessages = async (
+  conversationId: number,
+  viewerId: number
+): Promise<ChatMessageResponse[]> => {
+  const res = await api.get(`/api/conversations/${conversationId}/messages`, {
+    params: { page: 0, size: 50, viewerId },
+  });
+  return res.data.content as ChatMessageResponse[];
+};
+
+export const markConversationSeen = async (
+  conversationId: number,
+  viewerId: number
+) => {
+  await api.post(`/api/conversations/${conversationId}/seen`, null, {
+    params: { viewerId },
+  });
+};
+
