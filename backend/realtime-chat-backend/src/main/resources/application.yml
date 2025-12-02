@@ -25,7 +25,7 @@ server:
   port: ${PORT:8080}
 
 jwt:
-  secret: ${JWT_SECRET:43q5c43qkfresumj34k5vq3jkremfokdsap342530123* -211}
+  secret: "43q5c43qkfresumj34k5vq3jkremfokdsap342530123* -211"
   expiration-minutes: 60
 
 management:
