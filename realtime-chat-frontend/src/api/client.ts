@@ -2,7 +2,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: "https://realtime-chat-aiu2.onrender.com",
+  withCredentials: false,
 });
 
 // Request interceptor – JWT token ekleme
