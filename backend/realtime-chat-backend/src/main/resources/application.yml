@@ -1,10 +1,8 @@
 spring:
   datasource:
-    # Sadece host, port, db adı. User/pass buradan çıkıyor.
     url: jdbc:postgresql://dpg-d4mqpoq4d50c73etd74g-a.frankfurt-postgres.render.com:5432/realtime_chat_db_z1z0?sslmode=require
     username: realtime_chat_db_z1z0_user
     password: sR6fHMxxNIVkjWOg8teXZknYthQdiY99
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -18,5 +16,5 @@ server:
   port: 8080
 
 jwt:
-  secret: ${JWT_SECRET:43q5c43qkfreıwrj34k5vq3jkrewfokdsap34253o123*-211}
+  secret: "43q5c43qkfreıwrj34k5vq3jkrewfokdsap34253o123*-211"
   expiration-minutes: 60
