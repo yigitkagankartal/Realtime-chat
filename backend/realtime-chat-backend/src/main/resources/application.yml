@@ -1,38 +1,20 @@
 spring:
   datasource:
-    url: jdbc:postgresql://dpg-d4mgpgg4d50c73etd74g-a.frankfurt-postgres.render.com:5432/realtime_chat_db_zlz0?sslmode=require
-    username: realtime_chat_db_zlz0_user
-    password: sR6rHWXxMLYkjW0g3teXZknYtnQdY99
-    hikari:
-      maximum-pool-size: 10
-      connection-timeout: 30000
-
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
-    open-in-view: false
     properties:
       hibernate:
-        format_sql: false
+        format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          batch_size: 20
-        order_inserts: true
-        order_updates: true
 
 server:
   port: ${PORT:8080}
 
 jwt:
-  secret: "43q5c43qkfresumj34k5vq3jkremfokdsap342530123* -211"
+  secret: ${JWT_SECRET}
   expiration-minutes: 60
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: always
