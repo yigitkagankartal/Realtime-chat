@@ -14,8 +14,12 @@ public class JwtService {
 
     private final String secret;
     private final long expirationMinutes;
+
+    // DEĞİŞİKLİK BURADA:
+    // Artık 'application.properties' üzerinden dolaylı gitmek yerine
+    // direkt Render'daki 'JWT_SECRET' değişkenini çağırıyoruz.
     public JwtService(
-            @Value("${application.security.jwt.secret-key}") String secret,
+            @Value("${JWT_SECRET}") String secret,
             @Value("${jwt.expiration-minutes:1440}") long expirationMinutes
     ) {
         this.secret = secret;
@@ -24,7 +28,7 @@ public class JwtService {
 
     private Key getSigningKey() {
         if (secret == null || secret.isEmpty()) {
-            throw new IllegalStateException("JWT Secret key konfigürasyonu bulunamadı!");
+            throw new IllegalStateException("JWT Secret key konfigürasyonu bulunamadı! Lütfen Render Environment Variables kontrol et.");
         }
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
