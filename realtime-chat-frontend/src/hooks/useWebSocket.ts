@@ -13,7 +13,7 @@ export const useChatWebSocket = (
     if (!conversationId) return;
 
     const client = new Client({
-      brokerURL: import.meta.env.VITE_API_URL,
+      brokerURL: import.meta.env.VITE_WS_URL,
       reconnectDelay: 5000,
       debug: () => {
         // console.log("STOMP:", msg);
