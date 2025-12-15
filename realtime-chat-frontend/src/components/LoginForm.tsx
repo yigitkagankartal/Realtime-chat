@@ -8,7 +8,7 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
-  const [phonePrefix, setPhonePrefix] = useState("+90"); 
+  const [phonePrefix] = useState("+90");
   const [phoneNumberBody, setPhoneNumberBody] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,29 +17,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const phoneBodyRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
-  const handlePrefixChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^+\d]/g, "");
-    if (value.startsWith("+90") || value === "") {
-      setPhonePrefix(value);
-    }
-    if (value === "+90" && phoneBodyRef.current) {
-      phoneBodyRef.current.focus();
-    }
-  };
-
   const handleBodyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "");
     setPhoneNumberBody(value);
 
     if (value.length === 10 && passwordRef.current) {
-        passwordRef.current.focus();
+      passwordRef.current.focus();
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     const fullPhoneNumber = phonePrefix + phoneNumberBody.trim();
     const trimmedPassword = password.trim();
 
@@ -52,7 +42,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     try {
       const payload: ActivationLoginRequest = {
         phoneNumber: fullPhoneNumber,
-        activationCode: trimmedPassword, 
+        activationCode: trimmedPassword,
       };
 
       const me = await loginWithActivation(payload);
@@ -76,7 +66,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(180deg, #C6A7FF 0%, #9B8CFF 45%, #6F79FF 100%)", 
+        background:
+          "linear-gradient(180deg, #C6A7FF 0%, #9B8CFF 45%, #6F79FF 100%)",
         fontFamily: "Segoe UI, sans-serif",
       }}
     >
@@ -85,53 +76,52 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         style={{
           padding: "30px 40px",
           minWidth: 320,
-          maxWidth: 360, 
-          textAlign: 'center',
+          maxWidth: 360,
+          textAlign: "center",
         }}
       >
         <style>
-    {`
-      input::placeholder {
-        color: white;
-        opacity: 0.9;
-      }
-    `}
-  </style>
+          {`
+            input::placeholder {
+              color: white;
+              opacity: 0.9;
+            }
+          `}
+        </style>
 
-        <h2 style={{ marginBottom: 40, color: "white", fontSize: 28, fontWeight: 700 }}>
+        <h2
+          style={{
+            marginBottom: 40,
+            color: "white",
+            fontSize: 28,
+            fontWeight: 700,
+          }}
+        >
           Hoş Geldiniz!
         </h2>
 
-        {/* --- TELEFON NUMARASI ALANI --- */}
         <div style={{ display: "flex", marginBottom: 15 }}>
-          
-          {/* SABİT +90 KUTUSU (Bayrak ve +90) */}
-          <div style={{ 
-              width: 90, 
+          <div
+            style={{
+              width: 90,
               marginRight: 8,
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              padding: '10px 0',
-              // Şeffaf stil buraya taşındı ve sadeleştirildi
-              backgroundColor: 'rgba(255, 255, 255, 0.25)', 
-              border: '1px solid rgba(255, 255, 255, 0.6)',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "10px 0",
+              backgroundColor: "rgba(255, 255, 255, 0.25)",
+              border: "1px solid rgba(255, 255, 255, 0.6)",
               borderRadius: 10,
               fontWeight: 600,
-              color: 'white',
-              cursor: 'default',
-              boxSizing: "border-box", // Hata veren kısım buraya taşındı
-            }}>
-            <span style={{ 
-                fontSize: 18, 
-                marginRight: 4
-              }}>
-              🇹🇷 
-            </span>
-            <span style={{ fontWeight: 600 }}>+90</span>
+              color: "white",
+              cursor: "default",
+              boxSizing: "border-box",
+            }}
+          >
+            <span style={{ fontSize: 18, marginRight: 4 }}>🇹🇷</span>
+            <span>+90</span>
           </div>
 
-          {/* Numara Gövdesi (5XX XXX XXXX) */}
           <input
             type="tel"
             ref={phoneBodyRef}
@@ -140,20 +130,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             onChange={handleBodyChange}
             maxLength={10}
             style={{
-              flexGrow: 1, 
+              flexGrow: 1,
               padding: "12px 15px",
-              backgroundColor: 'rgba(255, 255, 255, 0.25)',
-              border: '1px solid rgba(255, 255, 255, 0.6)',
-              borderRadius: 10, 
+              backgroundColor: "rgba(255, 255, 255, 0.25)",
+              border: "1px solid rgba(255, 255, 255, 0.6)",
+              borderRadius: 10,
               outline: "none",
-              color: 'white',
-              boxSizing: "border-box" 
+              color: "white",
+              boxSizing: "border-box",
             }}
             required
           />
         </div>
 
-        {/* --- ŞİFRE ALANI --- */}
         <input
           type="password"
           ref={passwordRef}
@@ -164,12 +153,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             width: "100%",
             padding: "12px 15px",
             marginBottom: 20,
-            backgroundColor: 'rgba(255, 255, 255, 0.25)',
-            border: '1px solid rgba(255, 255, 255, 0.6)',
+            backgroundColor: "rgba(255, 255, 255, 0.25)",
+            border: "1px solid rgba(255, 255, 255, 0.6)",
             borderRadius: 10,
             outline: "none",
-            color: 'white',
-            boxSizing: "border-box" // Hata veren kısım buraya taşındı
+            color: "white",
+            boxSizing: "border-box",
           }}
           required
         />
@@ -183,8 +172,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               color: "white",
               textAlign: "center",
               fontWeight: 600,
-              backgroundColor: 'rgba(255, 0, 0, 0.5)',
-              padding: '5px 10px',
+              backgroundColor: "rgba(255, 0, 0, 0.5)",
+              padding: "5px 10px",
               borderRadius: 5,
             }}
           >
@@ -192,7 +181,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           </div>
         )}
 
-        {/* BUTON: Beyaz Zemin, Mor Yazı */}
         <button
           type="submit"
           disabled={loading}
@@ -206,16 +194,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             color: "#5623d4ff",
             fontWeight: 700,
             fontSize: 18,
-            boxShadow: "0 8px 15px rgba(51, 153, 10, 0.1)",
             cursor: loading ? "default" : "pointer",
             opacity: loading ? 0.8 : 1,
-            transition: "all 0.3s"
           }}
         >
           {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
         </button>
 
-        <p style={{ marginTop: 20, fontSize: 14, color: 'white' }}>
+        <p style={{ marginTop: 20, fontSize: 14, color: "white" }}>
           Bu uygulama sadece özel kullanıcılar için tasarlanmıştır.
         </p>
       </form>

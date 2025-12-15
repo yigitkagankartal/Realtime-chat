@@ -193,6 +193,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       ? users.find((u) => u.id === typingUserId)
       : undefined;
 
+  {typingUser && (
+  <div style={{ display: "none" }}>
+    {typingUser.displayName}
+  </div>
+)}
+
   // Seçili konuşmadaki karşı tarafın bilgisi
   const getPeerInfo = () => {
     if (!selectedConversation) return null;
@@ -248,36 +254,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     }
   }
 
-  // Aynı gün mü?
-  const isSameDay = (a: Date, b: Date) => {
-    return (
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate()
-    );
-  };
-
-  // Tarih label (Bugün / Dün / gg.aa)
-  const formatDateLabel = (d: Date) => {
-    const now = new Date();
-
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const startOfThatDay = new Date(d);
-    startOfThatDay.setHours(0, 0, 0, 0);
-
-    const diffMs = startOfToday.getTime() - startOfThatDay.getTime();
-    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) return "Bugün";
-    if (diffDays === 1) return "Dün";
-
-    return d.toLocaleDateString("tr-TR", {
-      day: "2-digit",
-      month: "2-digit",
-    });
-  };
 
   // Auto-scroll
   useEffect(() => {
