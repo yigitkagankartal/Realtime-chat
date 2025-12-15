@@ -26,19 +26,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                // CORS Ayarları: Frontend'den gelen isteklere izin veriyoruz
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("http://localhost:5173", "https://realtime-chat-frontend.onrender.com", "*"));
+                    config.setAllowedOriginPatterns(List.of("*")); // Her yerden gelen isteğe izin ver (Test için)
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
-                    config.setAllowedOriginPatterns(List.of("*"));
                     config.setAllowCredentials(true);
                     return config;
                 }))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        // KRİTİK NOKTA BURASI:
+                        // Ana sayfaya ("/") ve auth endpointlerine herkes girebilsin.
+                        .requestMatchers("/", "/index.html", "/api/auth/**").permitAll()
+                        // Diğer her yer şifreli (JWT) olsun
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
