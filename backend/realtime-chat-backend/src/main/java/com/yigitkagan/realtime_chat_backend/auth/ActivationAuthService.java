@@ -29,8 +29,9 @@ public class ActivationAuthService {
         String phone = rawPhone.replaceAll("[^0-9+]", "");
         String incomingCode = request.activationCode() != null ? request.activationCode().trim() : "";
 
-        if (!phone.matches("^\\+?[0-9]{7,15}$")) {
-            throw new RuntimeException("Geçersiz telefon numarası formatı! Lütfen kontrol ediniz.");
+        // Sadece +90 ile başlayan, sonra 5 gelen ve toplamda 12 rakam olan (başında + var) format
+        if (!phone.matches("^\\+905[0-9]{9}$")) {
+            throw new RuntimeException("Geçersiz numara! Telefon numarası +905xxxxxxxxx formatında olmalıdır.");
         }
         // Şifrenin (Kodun) kurallarını burada belirtmelisin.
         // ÖRNEK: "En az 6 karakter olmalı" kuralı:

@@ -13,11 +13,11 @@ export const useChatWebSocket = (
     if (!conversationId) return;
 
     const client = new Client({
-  brokerURL: "wss://realtime-chat-aiu2.onrender.com/ws", 
-  reconnectDelay: 5000,
-  debug: () => {
-    // console.log("STOMP:", msg);
-  },
+      brokerURL: import.meta.env.VITE_API_URL,
+      reconnectDelay: 5000,
+      debug: () => {
+        // console.log("STOMP:", msg);
+      },
       onConnect: () => {
   // Normal mesajları dinle
   client.subscribe(

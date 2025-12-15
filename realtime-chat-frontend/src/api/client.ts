@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://realtime-chat-aiu2.onrender.com",
+  baseURL: import.meta.env.VITE_API_URL,
   withCredentials: false,
 });
 
