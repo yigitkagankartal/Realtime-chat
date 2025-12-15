@@ -13,11 +13,11 @@ export const useChatWebSocket = (
     if (!conversationId) return;
 
     const client = new Client({
-      brokerURL: "ws://localhost:8080/ws",
-      reconnectDelay: 5000,
-      debug: () => {
-        // console.log("STOMP:", msg);
-      },
+  brokerURL: "wss://realtime-chat-aiu2.onrender.com/ws", 
+  reconnectDelay: 5000,
+  debug: () => {
+    // console.log("STOMP:", msg);
+  },
       onConnect: () => {
   // Normal mesajları dinle
   client.subscribe(
