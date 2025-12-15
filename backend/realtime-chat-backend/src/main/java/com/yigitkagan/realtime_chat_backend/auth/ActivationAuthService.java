@@ -5,7 +5,6 @@ import com.yigitkagan.realtime_chat_backend.auth.ActivationAuthDtos.ActivationLo
 import com.yigitkagan.realtime_chat_backend.user.User;
 import com.yigitkagan.realtime_chat_backend.user.UserRepository;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.Optional;
 
@@ -21,7 +20,6 @@ public class ActivationAuthService {
     }
 
     public ActivationLoginResponse loginWithActivationCode(ActivationLoginRequest request) {
-        // Gelen veriyi temizle
         String phone = request.phoneNumber().trim();
         String incomingCode = request.activationCode().trim();
 
@@ -29,34 +27,29 @@ public class ActivationAuthService {
         User user;
 
         if (userOptional.isPresent()) {
-            // --- SENARYO 1: KULLANICI ZATEN VAR ---
+            // --- KULLANICI VARSA ---
             user = userOptional.get();
             String currentPassword = user.getPasswordHash();
 
-            // Eğer şifresi yoksa (eski kayıt) veya şifre yanlışsa
+            // Şifre yanlışsa hata ver
             if (currentPassword == null || !currentPassword.equals(incomingCode)) {
-                // Şifre yanlışsa giriş izni verme!
-                throw new RuntimeException("Giriş Başarısız: Bu numara için belirlenen şifre yanlış.");
+                throw new RuntimeException("Giriş Başarısız: Bu numara için şifre yanlış.");
             }
 
-            // Başarılı giriş: LastLogin güncelle
             user.setLastLoginAt(Instant.now());
             userRepository.save(user);
 
         } else {
-            // --- SENARYO 2: KULLANICI YOK (İLK DEFA GELİYOR) ---
+            // --- KULLANICI YOKSA (KAYIT OL) ---
             user = new User();
             user.setPhoneNumber(phone);
-            user.setDisplayName(phone); // İsim şimdilik numara olsun
-            user.setEmail(phone + "@mobile.chat"); // JWT için zorunlu alan
-
-            // İlk girişte yazılan kodu ŞİFRE olarak kaydet
-            user.setPasswordHash(incomingCode);
+            user.setDisplayName(phone);
+            user.setEmail(phone + "@mobile.chat");
+            user.setPasswordHash(incomingCode); // İlk girişteki kodu şifre yap
 
             userRepository.save(user);
         }
 
-        // Token üret
         String token = jwtService.generateToken(user);
 
         return new ActivationLoginResponse(
