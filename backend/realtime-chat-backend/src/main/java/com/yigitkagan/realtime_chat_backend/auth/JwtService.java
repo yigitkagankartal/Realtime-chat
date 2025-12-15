@@ -12,17 +12,23 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    @Value("${jwt.secret}")
-    private String secret;
-
-    @Value("${jwt.expiration-minutes}")
-    private long expirationMinutes;
+    private final String secret;
+    private final long expirationMinutes;
+    public JwtService(
+            @Value("${application.security.jwt.secret-key}") String secret,
+            @Value("${jwt.expiration-minutes:1440}") long expirationMinutes
+    ) {
+        this.secret = secret;
+        this.expirationMinutes = expirationMinutes;
+    }
 
     private Key getSigningKey() {
+        if (secret == null || secret.isEmpty()) {
+            throw new IllegalStateException("JWT Secret key konfigürasyonu bulunamadı!");
+        }
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    // Var olan metot (email / subject üzerinden token)
     public String generateToken(String email) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationMinutes * 60 * 1000);
@@ -35,12 +41,9 @@ public class JwtService {
                 .compact();
     }
 
-    // 🔹 YENİ: Senin User entity'ni alan helper
     public String generateToken(User user) {
         if (user.getEmail() == null || user.getEmail().isBlank()) {
-            throw new IllegalArgumentException(
-                    "JWT üretmek için kullanıcının email alanı boş olmamalı."
-            );
+            throw new IllegalArgumentException("JWT üretmek için email boş olamaz.");
         }
         return generateToken(user.getEmail());
     }
