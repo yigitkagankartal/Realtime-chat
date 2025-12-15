@@ -15,9 +15,6 @@ public class JwtService {
     private final String secret;
     private final long expirationMinutes;
 
-    // DEĞİŞİKLİK BURADA:
-    // Artık 'application.properties' üzerinden dolaylı gitmek yerine
-    // direkt Render'daki 'JWT_SECRET' değişkenini çağırıyoruz.
     public JwtService(
             @Value("${JWT_SECRET}") String secret,
             @Value("${jwt.expiration-minutes:1440}") long expirationMinutes

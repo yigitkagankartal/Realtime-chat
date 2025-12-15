@@ -28,20 +28,19 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("http://localhost:5173"));
+                    config.setAllowedOrigins(List.of("http://localhost:5173", "https://realtime-chat-frontend.onrender.com", "*"));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
+                    config.setAllowedOriginPatterns(List.of("*"));
                     config.setAllowCredentials(true);
                     return config;
                 }))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // login / aktivasyon gibi endpointler serbest
+                        .requestMatchers("/", "/index.html").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        // geri kalan her şey JWT gerektirsin
                         .anyRequest().authenticated()
                 )
-                // JWT filtresini tekrar aktif ediyoruz
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
