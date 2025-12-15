@@ -9,7 +9,7 @@ interface LoginFormProps {
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [activationCode, setActivationCode] = useState("");
+  const [password, setPassword] = useState(""); // Değişken adı password oldu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,18 +18,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     setError(null);
 
     const trimmedPhone = phoneNumber.trim();
-    const trimmedCode = activationCode.trim();
+    const trimmedPassword = password.trim();
 
-    if (!trimmedPhone || !trimmedCode) {
-      setError("Telefon numarası ve aktivasyon kodu zorunlu.");
+    if (!trimmedPhone || !trimmedPassword) {
+      setError("Telefon numarası ve şifre zorunlu.");
       return;
     }
 
     setLoading(true);
     try {
+      // Backend hala "activationCode" beklediği için şifreyi o isimle gönderiyoruz
       const payload: ActivationLoginRequest = {
         phoneNumber: trimmedPhone,
-        activationCode: trimmedCode,
+        activationCode: trimmedPassword, 
       };
 
       const me = await loginWithActivation(payload);
@@ -39,7 +40,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else {
-        setError("Giriş başarısız. Telefon veya kodu kontrol et.");
+        setError("Giriş başarısız. Telefon veya şifreyi kontrol et.");
       }
     } finally {
       setLoading(false);
@@ -67,11 +68,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           minWidth: 320,
         }}
       >
-        <h2 style={{ marginTop: 0, marginBottom: 16, color: "#4A3F71" }}>
-          Sohbete Giriş
+        <h2 style={{ marginTop: 0, marginBottom: 16, color: "#4A3F71", textAlign: "center" }}>
+          Giriş Yap
         </h2>
 
-        <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+        {/* Telefon Alanı */}
+        <label style={{ display: "block", fontSize: 14, marginBottom: 4, color: "#666" }}>
           Telefon Numarası
         </label>
         <input
@@ -86,17 +88,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             borderRadius: 8,
             border: "1px solid #C5B8E6",
             outline: "none",
+            boxSizing: "border-box" // Input taşmasını engeller
           }}
         />
 
-        <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
-          Aktivasyon Kodu
+        {/* Şifre Alanı */}
+        <label style={{ display: "block", fontSize: 14, marginBottom: 4, color: "#666" }}>
+          Şifre
         </label>
         <input
-          type="text"
-          placeholder="Arkadaşından aldığın kod"
-          value={activationCode}
-          onChange={(e) => setActivationCode(e.target.value)}
+          type="password"  // Gizli karakter
+          placeholder="Şifrenizi girin"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           style={{
             width: "100%",
             padding: "10px 12px",
@@ -104,6 +108,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             borderRadius: 8,
             border: "1px solid #C5B8E6",
             outline: "none",
+            boxSizing: "border-box"
           }}
         />
 
@@ -114,6 +119,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               marginBottom: 8,
               fontSize: 13,
               color: "#B00020",
+              textAlign: "center"
             }}
           >
             {error}
@@ -125,7 +131,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           disabled={loading}
           style={{
             width: "100%",
-            padding: "10px 0",
+            padding: "12px 0",
             marginTop: 8,
             borderRadius: 8,
             border: "none",
@@ -134,6 +140,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             fontWeight: 600,
             cursor: loading ? "default" : "pointer",
             opacity: loading ? 0.7 : 1,
+            transition: "background 0.3s"
           }}
         >
           {loading ? "Giriş yapılıyor..." : "Giriş Yap"}
@@ -141,12 +148,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
         <p
           style={{
-            marginTop: 10,
+            marginTop: 15,
             fontSize: 12,
             color: "#7C6FA5",
+            textAlign: "center"
           }}
         >
-          Aktivasyon kodunu uygulamayı paylaşan kişiden alabilirsin.
+          Telefon numaranızı ve oluşturmak istediğiniz şifreyi girmelisiniz.
         </p>
       </form>
     </div>
