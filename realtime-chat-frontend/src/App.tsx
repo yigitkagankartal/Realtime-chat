@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import ChatLayout from "./components/ChatLayout";
 import LoginForm from "./components/LoginForm";
-import {fetchMe, logout } from "./api/auth";
+import { fetchMe, logout } from "./api/auth";
 import type { MeResponse } from "./api/auth";
 
 const App: React.FC = () => {
@@ -22,7 +22,6 @@ const App: React.FC = () => {
         setMe(res);
       } catch (err) {
         console.error("Me yüklenirken hata:", err);
-        // Token bozuksa temizle
         logout();
         setMe(null);
       }
@@ -35,55 +34,25 @@ const App: React.FC = () => {
     setMe(user);
   };
 
-  const handleLogoutClick = () => {
+  const handleLogout = () => {
     logout();
     setMe(null);
   };
 
   if (me === undefined) {
-    // İlk yükleme
     return <div>Yükleniyor...</div>;
   }
 
   if (me === null) {
-    // Login ekranı
     return <LoginForm onLogin={handleLogin} />;
   }
 
-  // Giriş yapmış kullanıcı için chat ekranı
+  // Giriş yapmış kullanıcı → direkt ChatLayout
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* İstersen üstte basit bir bar ile logout koyduk */}
-      <div
-        style={{
-          height: 40,
-          backgroundColor: "#4A3F71",
-          color: "white",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 16px",
-          fontSize: 14,
-        }}
-      >
-        <span>{me.displayName}</span>
-        <button
-          onClick={handleLogoutClick}
-          style={{
-            border: "none",
-            background: "transparent",
-            color: "white",
-            cursor: "pointer",
-          }}
-        >
-          Çıkış Yap
-        </button>
-      </div>
-
-      <div style={{ flex: 1 }}>
-        <ChatLayout me={me} />
-      </div>
-    </div>
+    <ChatLayout
+      me={me}
+      onLogout={handleLogout}
+    />
   );
 };
 

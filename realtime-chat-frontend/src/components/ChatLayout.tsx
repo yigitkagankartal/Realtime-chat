@@ -18,7 +18,9 @@ import { useOnlineUsers } from "../hooks/useOnlineUsers";
 
 interface ChatLayoutProps {
   me: MeResponse;
+  onLogout: () => void;
 }
+
 
 // Saat formatı (sadece saat:dakika)
 const formatTime = (iso: string | undefined) =>
@@ -35,7 +37,7 @@ const renderStatusTicks = (status?: MessageStatus) => {
   return "✓";
 };
 
-const ChatLayout: React.FC<ChatLayoutProps> = ({ me }) => {
+const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [conversations, setConversations] = useState<ConversationResponse[]>([]);
   const [typingUserId, setTypingUserId] = useState<number | null>(null);
@@ -334,301 +336,262 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me }) => {
     .sort((a, b) => b.lastMessageDate - a.lastMessageDate);
 
   return (
+  <div
+    style={{
+      display: "flex",
+      height: "100vh",
+      fontFamily: "Segoe UI, sans-serif",
+      background: "linear-gradient(180deg, #C6A7FF 0%, #9B8CFF 45%, #6F79FF 100%)",
+    }}
+  >
+    {/* SOL PANEL */}
     <div
       style={{
-        display: "flex",
-        height: "100vh",
-        fontFamily: "Segoe UI, sans-serif",
-        backgroundColor: "#E8DFFC",
+        width: 300,
+        borderRight: "1px solid #DDD6FF",
+        backgroundColor: "#F5F3FF",
+        padding: "12px 14px",
+        overflowY: "auto",
       }}
     >
-      {/* SOL PANEL */}
-      <div
-        style={{
-          width: 260,
-          borderRight: "1px solid #CCC",
-          backgroundColor: "#F3F1F9",
-          padding: 8,
-          overflowY: "auto",
-        }}
-      >
-        <h3 style={{ marginTop: 0, color: "#4A3F71" }}>Sohbetler</h3>
+      <h3 style={{ marginTop: 0, color: "#3E3663" }}>Sohbetler</h3>
 
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {sidebarItems.map(
-            ({
-              user,
-              isOnline,
-              lastMessageText,
-              lastMessageTime,
-              unreadCount,
-            }) => (
-              <li
-                key={user.id}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {sidebarItems.map(
+          ({
+            user,
+            isOnline,
+            lastMessageText,
+            lastMessageTime,
+            unreadCount,
+          }) => (
+            <li
+              key={user.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 8,
+                padding: "10px 12px",
+                borderRadius: 14,
+                backgroundColor: "#FFFFFF",
+                cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+              }}
+              onClick={() => openConversationWith(user.id)}
+            >
+              <span
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 8,
-                  padding: "8px 10px",
-                  borderRadius: 10,
-                  backgroundColor: "#FFFFFF",
-                  cursor: "pointer",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+                  width: 10,
+                  height: 10,
+                  backgroundColor: isOnline ? "#6F79FF" : "#CCC",
+                  borderRadius: "50%",
                 }}
-                onClick={() => openConversationWith(user.id)}
-              >
-                <span
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, color: "#3E3663" }}>
+                  {user.displayName}
+                </div>
+                <div style={{ fontSize: 12, color: "#7C75A6" }}>
+                  {user.email}
+                </div>
+                <div
                   style={{
-                    width: 10,
-                    height: 10,
-                    backgroundColor: isOnline ? "#9B5DE5" : "#bbb",
-                    borderRadius: "50%",
+                    fontSize: 11,
+                    color: "#9B95C9",
+                    marginTop: 2,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 8,
                   }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: "#4A3F71" }}>
-                    {user.displayName}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#7C6FA5" }}>
-                    {user.email}
-                  </div>
-                  <div
+                >
+                  <span
                     style={{
-                      fontSize: 11,
-                      color: "#9a8fb8",
-                      marginTop: 2,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 8,
-                      alignItems: "center",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: 120,
                     }}
                   >
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                      }}
-                    >
-                      {lastMessageText}
-                    </span>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      {lastMessageTime && <span>{lastMessageTime}</span>}
-                      {unreadCount > 0 && (
-                        <span
-                          style={{
-                            minWidth: 18,
-                            height: 18,
-                            borderRadius: 9,
-                            backgroundColor: "#9B5DE5",
-                            color: "white",
-                            fontSize: 11,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "0 4px",
-                          }}
-                        >
-                          {unreadCount}
-                        </span>
-                      )}
-                    </div>
+                    {lastMessageText}
+                  </span>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {lastMessageTime && <span>{lastMessageTime}</span>}
+                    {unreadCount > 0 && (
+                      <span
+                        style={{
+                          minWidth: 18,
+                          height: 18,
+                          borderRadius: 9,
+                          backgroundColor: "#6F79FF",
+                          color: "white",
+                          fontSize: 11,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {unreadCount}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </li>
-            )
-          )}
-        </ul>
-      </div>
-
-      {/* SAĞ PANEL */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          background: "linear-gradient(#E8DFFC, #C9B9F7)",
-        }}
-      >
-        {/* ÜST BAR */}
-        <div
-          style={{
-            backgroundColor: "#6C4AB6",
-            color: "white",
-            padding: "14px 18px",
-            fontSize: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          {peer ? (
-            <div>
-              <div style={{ fontWeight: 600 }}>{peer.name}</div>
-              <div
-                style={{
-                  fontSize: 12,
-                  opacity: 0.85,
-                }}
-              >
-                {isPeerOnline
-                  ? "Çevrimiçi"
-                  : lastSeenText ?? "Son görülme yakınlarda"}
               </div>
-            </div>
-          ) : (
-            <strong>Sohbet Seç</strong>
-          )}
-        </div>
-
-        {/* MESAJLAR */}
-        <div
-          style={{
-            flex: 1,
-            padding: 16,
-            overflowY: "auto",
-          }}
-        >
-          {selectedConversation ? (
-            <>
-              {messages.map((m, index) => {
-                const isMine = m.senderId === me.id;
-                const ticks = renderStatusTicks(m.status);
-                const time = formatTime(m.createdAt);
-                const tickColor =
-                  m.status === "SEEN" ? "#9B5DE5" : "#777";
-
-                const currentDate = new Date(m.createdAt);
-                const prev = messages[index - 1];
-                const showDateDivider =
-                  index === 0 ||
-                  (prev &&
-                    !isSameDay(currentDate, new Date(prev.createdAt)));
-
-                return (
-                  <div key={m.id}>
-                    {showDateDivider && (
-                      <div
-                        style={{
-                          textAlign: "center",
-                          margin: "8px 0",
-                          fontSize: 12,
-                          color: "#999",
-                        }}
-                      >
-                        {formatDateLabel(currentDate)}
-                      </div>
-                    )}
-
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: isMine ? "flex-end" : "flex-start",
-                        marginBottom: 12,
-                      }}
-                    >
-                      <div
-                        style={{
-                          backgroundColor: isMine ? "#DCC7FF" : "#FFFFFF",
-                          borderRadius: 10,
-                          padding: "10px 12px",
-                          maxWidth: "70%",
-                          boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-                        }}
-                      >
-                        <div style={{ color: "#333" }}>{m.content}</div>
-
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                            fontSize: 11,
-                            marginTop: 4,
-                            color: tickColor,
-                            gap: 4,
-                          }}
-                        >
-                          <span style={{ color: "#555" }}>{time}</span>
-                          {isMine && <span>{ticks}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </>
-          ) : (
-            <p style={{ color: "#777" }}>Soldan bir kullanıcı seç.</p>
-          )}
-        </div>
-
-        {/* YAZIYOR */}
-        {selectedConversation && typingUser && (
-          <div
-            style={{
-              padding: "4px 18px",
-              fontSize: 13,
-              color: "#5A4A85",
-              fontStyle: "italic",
-            }}
-          >
-            {typingUser.displayName} yazıyor...
-          </div>
+            </li>
+          )
         )}
+      </ul>
+    </div>
 
-        {/* INPUT */}
-        <div
-          style={{
-            padding: 12,
-            display: "flex",
-            gap: 10,
-            backgroundColor: "#F3F1F9",
-            borderTop: "1px solid #CCC",
-          }}
-        >
-          <input
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 25,
-              border: "1px solid #C5B8E6",
-              outline: "none",
-              backgroundColor: "#FFFFFF",
-              color: "#4A3F71",
-            }}
-            value={newMessage}
-            onChange={handleInputChange}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Mesaj yaz..."
-          />
-
-          <button
-            onClick={handleSend}
-            style={{
-              padding: "12px 20px",
-              borderRadius: 25,
-              backgroundColor: "#6C4AB6",
-              border: "none",
-              color: "white",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Gönder
-          </button>
-        </div>
+    {/* SAĞ PANEL */}
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)",
+      }}
+    >
+     {/* ÜST BAR */}
+<div
+  style={{
+    background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
+    color: "white",
+    padding: "14px 18px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  }}
+>
+  {/* 👤 SOL: KULLANICI + ÇEVRİMİÇİ */}
+  {peer ? (
+    <div>
+      <div style={{ fontWeight: 600 }}>{peer.name}</div>
+      <div style={{ fontSize: 12, opacity: 0.85 }}>
+        {isPeerOnline
+          ? "Çevrimiçi"
+          : lastSeenText ?? "Son görülme yakınlarda"}
       </div>
     </div>
-  );
+  ) : (
+    <strong>Sohbet Seç</strong>
+  )}
+
+  {/* 🚪 SAĞ: ÇIKIŞ */}
+  <button
+    onClick={onLogout}
+    title="Çıkış Yap"
+    style={{
+      background: "rgba(255,255,255,0.15)",
+      border: "none",
+      color: "white",
+      padding: "8px 16px",
+      borderRadius: 20,
+      cursor: "pointer",
+      fontWeight: 600,
+    }}
+  >
+    Çıkış
+  </button>
+</div>
+
+
+      {/* MESAJLAR */}
+<div style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
+  {/* 🔥 WHATSAPP WEB GİBİ MESAJ KOLONU */}
+  <div
+    style={{
+      maxWidth: 1180,
+      margin: "0 auto",
+    }}
+  >
+    {messages.map((m) => {
+      const isMine = m.senderId === me.id;
+      const time = formatTime(m.createdAt);
+
+      return (
+        <div
+          key={m.id}
+          style={{
+            display: "flex",
+            justifyContent: isMine ? "flex-end" : "flex-start",
+            marginBottom: 12,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
+              borderRadius: 16,
+              padding: "10px 14px",
+              maxWidth: "70%",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+            }}
+          >
+            <div style={{ color: "#3E3663" }}>{m.content}</div>
+            <div
+              style={{
+                textAlign: "right",
+                fontSize: 11,
+                marginTop: 4,
+                color: "#6F79FF",
+              }}
+            >
+              {time} {isMine && renderStatusTicks(m.status)}
+            </div>
+          </div>
+        </div>
+      );
+    })}
+    <div ref={messagesEndRef} />
+  </div>
+</div>
+
+
+      {/* INPUT */}
+      <div
+        style={{
+          padding: 12,
+          display: "flex",
+          gap: 10,
+          backgroundColor: "#F5F3FF",
+          borderTop: "1px solid #DDD6FF",
+        }}
+      >
+        <input
+          style={{
+            flex: 1,
+            padding: 12,
+            borderRadius: 25,
+            border: "1px solid #DDD6FF",
+            outline: "none",
+            backgroundColor: "#FFFFFF",
+            color: "#3E3663",
+          }}
+          value={newMessage}
+          onChange={handleInputChange}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          placeholder="Mesaj yaz..."
+        />
+
+        <button
+          onClick={handleSend}
+          style={{
+            padding: "12px 22px",
+            borderRadius: 25,
+            background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
+            border: "none",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Gönder
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 };
 
 export default ChatLayout;
