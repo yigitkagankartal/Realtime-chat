@@ -3,6 +3,7 @@ package com.yigitkagan.realtime_chat_backend.config;
 import com.yigitkagan.realtime_chat_backend.auth.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // BU IMPORT ÖNEMLİ
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -26,21 +27,32 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                // CORS Ayarları: Frontend'den gelen isteklere izin veriyoruz
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOriginPatterns(List.of("*")); // Her yerden gelen isteğe izin ver (Test için)
-                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    // Frontend'in tam olarak nereden geldiğine bakmaksızın izin ver (Test için)
+                    config.setAllowedOriginPatterns(List.of("*"));
+                    // GET, POST, PUT, DELETE, OPTIONS hepsine izin ver
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
                     return config;
                 }))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // KRİTİK NOKTA BURASI:
-                        // Ana sayfaya ("/") ve auth endpointlerine herkes girebilsin.
-                        .requestMatchers("/", "/index.html", "/api/auth/**").permitAll()
-                        // Diğer her yer şifreli (JWT) olsun
+                        // 1. Tarayıcı ön uçuş (Preflight) isteklerine izin ver (CORS için şart)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 2. Ana sayfa ve statik dosyalar
+                        .requestMatchers("/", "/index.html", "/static/**", "/assets/**").permitAll()
+
+                        // 3. Auth ve Aktivasyon endpointleri (Özellikle POST metodunu belirtiyoruz)
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/**").permitAll()
+
+                        // 4. WebSocket endpointi (Handshake için açık olmalı)
+                        .requestMatchers("/ws/**").permitAll()
+
+                        // Geri kalan her şey şifreli
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
