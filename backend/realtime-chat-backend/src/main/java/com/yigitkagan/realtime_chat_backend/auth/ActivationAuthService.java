@@ -20,32 +20,51 @@ public class ActivationAuthService {
     }
 
     public ActivationLoginResponse loginWithActivationCode(ActivationLoginRequest request) {
-        String phone = request.phoneNumber().trim();
-        String incomingCode = request.activationCode().trim();
+        String rawPhone = request.phoneNumber();
+        if (rawPhone == null) rawPhone = "";
+
+        if (rawPhone.matches(".*[^0-9+\\s-].*")) {
+            throw new RuntimeException("Telefon numarası sadece rakam içerebilir! Harf girmeyiniz.");
+        }
+        String phone = rawPhone.replaceAll("[^0-9+]", "");
+        String incomingCode = request.activationCode() != null ? request.activationCode().trim() : "";
+
+        if (!phone.matches("^\\+?[0-9]{7,15}$")) {
+            throw new RuntimeException("Geçersiz telefon numarası formatı! Lütfen kontrol ediniz.");
+        }
+        // Şifrenin (Kodun) kurallarını burada belirtmelisin.
+        // ÖRNEK: "En az 6 karakter olmalı" kuralı:
+        if (incomingCode.length() < 6) {
+            throw new RuntimeException("Şifre/Kod en az 6 karakter olmalıdır!");
+        }
+
+        // --- BURADAN SONRASI AYNI MANTIK ---
 
         Optional<User> userOptional = userRepository.findByPhoneNumber(phone);
         User user;
 
         if (userOptional.isPresent()) {
-            // --- KULLANICI VARSA ---
+            // --- KULLANICI ZATEN VAR (Giriş Yapıyor) ---
             user = userOptional.get();
             String currentPassword = user.getPasswordHash();
 
-            // Şifre yanlışsa hata ver
+            // Şifre boşsa veya eşleşmiyorsa hata ver
             if (currentPassword == null || !currentPassword.equals(incomingCode)) {
-                throw new RuntimeException("Giriş Başarısız: Bu numara için şifre yanlış.");
+                throw new RuntimeException("Giriş Başarısız: Bu numara için şifre hatalı.");
             }
 
+            // Başarılı giriş -> Son görülme güncelle
             user.setLastLoginAt(Instant.now());
             userRepository.save(user);
 
         } else {
-            // --- KULLANICI YOKSA (KAYIT OL) ---
+            // --- KULLANICI YOK (Yeni Kayıt) ---
+            // Numarayı kaydet ve ilk girişteki kodu şifre olarak belirle.
             user = new User();
             user.setPhoneNumber(phone);
-            user.setDisplayName(phone);
+            user.setDisplayName(phone); // İsim şimdilik numara olsun
             user.setEmail(phone + "@mobile.chat");
-            user.setPasswordHash(incomingCode); // İlk girişteki kodu şifre yap
+            user.setPasswordHash(incomingCode);
 
             userRepository.save(user);
         }

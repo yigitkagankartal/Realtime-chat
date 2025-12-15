@@ -16,7 +16,7 @@ public class JwtService {
     private final long expirationMinutes;
 
     public JwtService(
-            @Value("${JWT_SECRET}") String secret,
+            @Value("${application.security.jwt.secret-key}") String secret,
             @Value("${jwt.expiration-minutes:1440}") long expirationMinutes
     ) {
         this.secret = secret;
