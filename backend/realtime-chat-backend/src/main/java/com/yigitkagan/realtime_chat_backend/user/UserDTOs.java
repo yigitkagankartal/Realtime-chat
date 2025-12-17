@@ -30,6 +30,7 @@ public class UserDTOs {
             String email,
             String displayName,
             String profilePictureUrl,
-            String about
+            String about,
+            String phoneNumber
     ) {}
 }

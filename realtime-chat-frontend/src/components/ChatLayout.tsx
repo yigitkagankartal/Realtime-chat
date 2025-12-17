@@ -23,6 +23,25 @@ interface ChatLayoutProps {
   me: MeResponse;
   onLogout: () => void;
 }
+// ✅ CSS: Animasyon Kodları
+const typingIndicatorStyles = `
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+    40% { transform: scale(1.0); opacity: 1; }
+  }
+  .typing-dot {
+    width: 6px; height: 6px; background-color: #9B95C9; border-radius: 50%;
+    display: inline-block; animation: bounce 1.4s infinite ease-in-out both; margin: 0 2px;
+  }
+  .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+  .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+`;
+
+const styleSheet = document.createElement("style");
+styleSheet.type = "text/css";
+styleSheet.innerText = typingIndicatorStyles;
+document.head.appendChild(styleSheet);
+
 
 // Tarih nesnesini alıp günün başlangıcına (00:00) çeker (karşılaştırma için)
 const startOfDay = (d: Date) => {
@@ -106,6 +125,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   >({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const onlineIds = useOnlineUsers(me.id);
+  const typingTimeoutRef = useRef<any>(null);
 
   // Mesaj dinleyici (WebSocket)
   const handleIncomingMessage = useCallback(
@@ -153,10 +173,19 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const handleTyping = useCallback(
     (senderId: number) => {
       if (senderId === me.id) return;
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // 2. "Yazıyor..." durumunu aktif et (veya aktif tut)
       setTypingUserId(senderId);
-      setTimeout(() => {
-        setTypingUserId((prev) => (prev === senderId ? null : prev));
-      }, 2000);
+
+      // 3. Yeni bir sayaç başlat: "Eğer 2 saniye boyunca başka sinyal gelmezse kapat"
+      typingTimeoutRef.current = setTimeout(() => {
+        setTypingUserId(null);
+        typingTimeoutRef.current = null;
+      }, 2000); // 2 saniye bekleme süresi
     },
     [me.id]
   );
@@ -247,18 +276,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     sendTyping(me.id);
   };
 
-  const typingUser =
-    typingUserId !== null
-      ? users.find((u) => u.id === typingUserId)
-      : undefined;
-
-  {
-    typingUser && (
-      <div style={{ display: "none" }}>
-        {typingUser.displayName}
-      </div>
-    )
-  }
 
   // Seçili konuşmadaki karşı tarafın bilgisi
   const getPeerInfo = () => {
@@ -672,8 +689,16 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               {/* İsim ve Durum Bilgisi */}
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <div style={{ fontWeight: 600, fontSize: 15, lineHeight: "1.2" }}>{peer.name}</div>
-                <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2" }}>
-                  {isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"}
+                <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2", transition: "color 0.3s" }}>
+                  {/* Eğer peer (konuştuğun kişi) şu an yazıyorsa */}
+                  {typingUserId === peer.id ? (
+                    <span style={{ fontStyle: "italic", fontWeight: "600" }}>
+                      Yazıyor...
+                    </span>
+                  ) : (
+                    // Yazmıyorsa normal durumu göster
+                    isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"
+                  )}
                 </div>
               </div>
             </div>
@@ -746,8 +771,53 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                   </div>
                 );
               })}
-            <div ref={messagesEndRef} />
+
+            {/* ✅ YENİ EKLENECEK KISIM: YAZIYOR BALONCUĞU */}
+          <div
+            style={{
+              // Görünürken alt padding var, gizlenirken padding yok (yer kaplamasın diye)
+              padding: typingUserId === peer?.id ? "0 24px 16px 24px" : "0 24px 0 24px",
+              
+              // Yazıyorsa görünür (opacity 1), yoksa gizli (opacity 0)
+              opacity: typingUserId === peer?.id ? 1 : 0,
+              
+              // Yazıyorsa olduğu yerde, yoksa 10px aşağıda dursun (yukarı kayma efekti)
+              transform: typingUserId === peer?.id ? "translateY(0)" : "translateY(10px)",
+              
+              // ⚠️ ÖNEMLİ DÜZELTME: max-height ve padding geçişlerini de ekliyoruz
+              // Bu sayede aniden değil, yumuşak bir şekilde küçülerek ve solarak kaybolacak
+              transition: "opacity 0.5s ease-in-out, transform 0.5s ease-in-out, max-height 0.5s ease-in-out, padding 0.5s ease-in-out",
+              
+              // Görünmezken tıklamayı engelle
+              pointerEvents: typingUserId === peer?.id ? "auto" : "none",
+              
+              // Görünmezken yer kaplamasın (akışı bozmasın)
+              // height yerine max-height kullanıyoruz ve animasyonluyoruz
+              maxHeight: typingUserId === peer?.id ? 60 : 0, // Baloncuğun yüksekliğine göre bir değer
+              
+              overflow: "hidden" 
+            }}
+          >
+            <div style={{
+              backgroundColor: "#FFFFFF", // Karşı taraf mesaj rengi
+              padding: "10px 14px",       // Biraz daha kompakt
+              borderRadius: 16,
+              borderTopLeftRadius: 0,     // Sol üst köşe sivri
+              display: "inline-flex",
+              alignItems: "center",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+              width: "fit-content",
+              minHeight: 36
+            }}>
+              {/* Üç Nokta Animasyonu */}
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+            </div>
           </div>
+
+          <div ref={messagesEndRef} />
+        </div>
         </div>
 
         {/* INPUT */}

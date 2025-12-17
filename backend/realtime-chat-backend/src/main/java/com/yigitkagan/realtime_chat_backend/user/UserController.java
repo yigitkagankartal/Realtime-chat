@@ -63,7 +63,8 @@ public class UserController {
                         u.getEmail(),
                         u.getDisplayName(),
                         u.getProfilePictureUrl(),
-                        u.getAbout()
+                        u.getAbout(),
+                        u.getPhoneNumber()
                 ))
                 .toList();
     }
@@ -138,7 +139,8 @@ public class UserController {
                 user.getEmail(),
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
-                user.getAbout()
+                user.getAbout(),
+                user.getPhoneNumber()
         );
     }
 }
