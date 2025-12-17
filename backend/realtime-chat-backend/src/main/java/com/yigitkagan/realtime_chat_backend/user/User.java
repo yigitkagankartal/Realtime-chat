@@ -14,6 +14,12 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column(columnDefinition = "TEXT")
+    private String profilePictureUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String about;
+
     @Column(unique = true)
     private String phoneNumber;
 
@@ -49,4 +55,9 @@ public class User {
     public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+    public String getProfilePictureUrl() { return profilePictureUrl; }
+    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+
+    public String getAbout() { return about; }
+    public void setAbout(String about) { this.about = about; }
 }

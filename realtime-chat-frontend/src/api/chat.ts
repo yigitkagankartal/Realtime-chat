@@ -3,6 +3,8 @@ export interface UserListItem {
   id: number;
   email: string;
   displayName: string;
+  profilePictureUrl?: string;
+  about?: string;
 }
 
 export interface ConversationResponse {
@@ -72,5 +74,8 @@ export const markConversationSeen = async (
   });
 };
 
-
+export const getUserById = async (userId: number): Promise<UserListItem> => {
+  const res = await api.get<UserListItem>(`/api/users/${userId}`);
+  return res.data;
+};
 

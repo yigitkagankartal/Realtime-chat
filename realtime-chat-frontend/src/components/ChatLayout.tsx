@@ -5,6 +5,7 @@ import {
   listConversations,
   listUsers,
   markConversationSeen,
+  getUserById
 } from "../api/chat";
 import type {
   ChatMessageResponse,
@@ -15,7 +16,9 @@ import type {
 import type { MeResponse } from "../api/auth";
 import { useChatWebSocket } from "../hooks/useWebSocket";
 import { useOnlineUsers } from "../hooks/useOnlineUsers";
-
+import ProfileSidebar from "./ProfileSidebar";
+import ProfileSetupModal from "./ProfileSetupModal";
+import ContactInfoSidebar from "./ContactInfoSidebar";
 interface ChatLayoutProps {
   me: MeResponse;
   onLogout: () => void;
@@ -91,12 +94,16 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false); // Yükleniyor mu?
   const scrollRef = useRef<HTMLDivElement>(null); // Mesaj kutusunu seçmek için
   const [prevScrollHeight, setPrevScrollHeight] = useState<number | null>(null); // Zıplamayı önlemek için
-
+  const [isProfileSidebarOpen, setProfileSidebarOpen] = useState(false);
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<MeResponse>(me);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [contactSidebarOpen, setContactSidebarOpen] = useState(false);
+  const [contactInfo, setContactInfo] = useState<UserListItem | null>(null);
   // Her konuşmanın mesajlarını cachelemek için (sol listede son mesaj & unread için)
   const [messageCache, setMessageCache] = useState<
     Record<number, ChatMessageResponse[]>
   >({});
-
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const onlineIds = useOnlineUsers(me.id);
 
@@ -192,6 +199,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
   // Sohbet aç
   const openConversationWith = async (otherUserId: number) => {
+    setContactSidebarOpen(false); 
+    setContactInfo(null);
     const conv = await createOrGetConversation(otherUserId);
     setSelectedConversation(conv);
     setPage(0);
@@ -254,17 +263,19 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   // Seçili konuşmadaki karşı tarafın bilgisi
   const getPeerInfo = () => {
     if (!selectedConversation) return null;
-
-    if (selectedConversation.user1Id === me.id) {
-      return {
-        id: selectedConversation.user2Id,
-        name: selectedConversation.user2Name,
-      };
-    }
-
+    const peerId =
+      selectedConversation.user1Id === me.id
+        ? selectedConversation.user2Id
+        : selectedConversation.user1Id;
+    const userObj = users.find((u) => u.id === peerId);
     return {
-      id: selectedConversation.user1Id,
-      name: selectedConversation.user1Name,
+      id: peerId,
+      name: userObj
+        ? userObj.displayName
+        : selectedConversation.user1Id === me.id
+        ? selectedConversation.user2Name
+        : selectedConversation.user1Name,
+      profilePictureUrl: userObj?.profilePictureUrl,
     };
   };
 
@@ -349,6 +360,34 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       setPrevScrollHeight(null);
     }
   }, [messages]); // Mesajlar değişince çalışır
+  useEffect(() => {
+    // Backend'de display name varsayılan olarak telefon nosu atandığını varsayıyoruz.
+    // +905... formatını temizleyip kıyaslayabilirsin veya direkt eşitlik kontrolü.
+    if (me.displayName === me.phoneNumber) {
+      setShowSetupModal(true);
+    }
+  }, [me]);
+  // Sidebar'dan gelen güncellemeyi işle
+  const handleUpdateMe = (updated: MeResponse) => {
+    setCurrentUser(updated);
+  };
+
+// Sağ Header'a tıklayınca çalışacak
+  const handleContactClick = async () => {
+    if (!peer) return;
+    
+    // Sidebar'ı aç
+    setContactSidebarOpen(true);
+    
+    try {
+        // Backend'den güncel veriyi (About, Resim vs) çek
+        const data = await getUserById(peer.id);
+        setContactInfo(data);
+    } catch (error) {
+        console.error("Kullanıcı detayı çekilemedi", error);
+    }
+  };
+
 
   // Sol panel için: kullanıcı + conversation + son mesaj + unread bilgisi
   const sidebarItems = users
@@ -409,6 +448,61 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         background: "linear-gradient(180deg, #C6A7FF 0%, #9B8CFF 45%, #6F79FF 100%)",
       }}
     >
+      {/* 1. BÜYÜK RESİM POPUP (LIGHTBOX) */}
+      {viewingImage && (
+        <div
+          style={{
+            position: "fixed", zIndex: 3000, top: 0, left: 0, width: "100%", height: "100%",
+            backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+          onClick={() => setViewingImage(null)} // Boşluğa tıklayınca kapat
+        >
+          <img 
+            src={viewingImage} 
+            alt="Full Size" 
+            style={{ maxHeight: "85%", maxWidth: "85%", borderRadius: 10, boxShadow: "0 0 20px rgba(0,0,0,0.5)" }} 
+          />
+          <button
+             onClick={() => setViewingImage(null)}
+             style={{
+               position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.2)",
+               border: "none", color: "white", fontSize: 24, cursor: "pointer", borderRadius: "50%",
+               width: 40, height: 40, display:"flex", alignItems:"center", justifyContent:"center"
+             }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 2. İLK GİRİŞ POPUP'I */}
+      {showSetupModal && (
+        <ProfileSetupModal
+          onComplete={(updated) => {
+            setCurrentUser(updated);
+            setShowSetupModal(false);
+          }}
+        />
+      )}
+
+      {/* 3. PROFİL SIDEBAR */}
+      <ProfileSidebar
+        isOpen={isProfileSidebarOpen}
+        onClose={() => setProfileSidebarOpen(false)}
+        me={currentUser}
+        onUpdateMe={handleUpdateMe}
+        onViewImage={(url) => setViewingImage(url)} // Resmi büyütmek için
+      />
+
+      {/* 4. YENİ BİLEŞEN: CONTACT INFO SIDEBAR (SAĞ) */}
+      <ContactInfoSidebar 
+        isOpen={contactSidebarOpen}
+        onClose={() => setContactSidebarOpen(false)}
+        user={contactInfo} // API'den gelen detaylı veri
+        onViewImage={(url) => setViewingImage(url)}
+        lastSeenText={isPeerOnline ? "Çevrimiçi" : (lastSeenText ?? "")}
+      />
+
       {/* SOL PANEL */}
       <div
         style={{
@@ -417,83 +511,103 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           backgroundColor: "#F5F3FF",
           padding: "12px 14px",
           overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <h3 style={{ marginTop: 0, color: "#3E3663" }}>Sohbetler</h3>
+        {/* SOL PANEL HEADER (Profil Resmi & Tıklama Alanı) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 10,
+            paddingBottom: 10,
+            borderBottom: "1px solid #EAE6FF",
+          }}
+        >
+          {/* Profilim (Sidebar Tetikleyici) */}
+          <div
+            onClick={() => setProfileSidebarOpen(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+              padding: "6px", borderRadius: "12px", transition: "background 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.04)")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            <div
+              style={{
+                width: 42, height: 42, borderRadius: "50%",
+                backgroundColor: "#DDD6FF",
+                backgroundImage: currentUser.profilePictureUrl
+                  ? `url(${currentUser.profilePictureUrl})`
+                  : "none",
+                backgroundSize: "cover", backgroundPosition: "center",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "18px", color: "#6F79FF", fontWeight: "bold",
+                border: "2px solid white", boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+              }}
+            >
+              {!currentUser.profilePictureUrl && currentUser.displayName.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: 15, fontWeight: 700, color: "#3E3663" }}>Profilim</span>
+                <span style={{ fontSize: 11, color: "#8E88B9" }}>Düzenlemek için tıkla</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 style={{ marginTop: 5, marginBottom: 15, color: "#3E3663", paddingLeft: 6 }}>Sohbetler</h3>
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {sidebarItems.map(
-            ({
-              user,
-              isOnline,
-              lastMessageText,
-              lastMessageTime,
-              unreadCount,
-            }) => (
+          {sidebarItems.map(({ user, isOnline, lastMessageText, lastMessageTime, unreadCount }) => (
               <li
                 key={user.id}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 8,
-                  padding: "10px 12px",
-                  borderRadius: 14,
-                  backgroundColor: "#FFFFFF",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                  display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
+                  padding: "10px 12px", borderRadius: 14, backgroundColor: "#FFFFFF",
+                  cursor: "pointer", boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
                 }}
                 onClick={() => openConversationWith(user.id)}
               >
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    backgroundColor: isOnline ? "#6F79FF" : "#CCC",
-                    borderRadius: "50%",
-                  }}
-                />
+                <div style={{ position: "relative" }}>
+                   <div style={{
+                      width: 40, height: 40, borderRadius: "50%",
+                      backgroundColor: "#EAE6FF",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "16px", color: "#6F79FF", fontWeight: "600",
+                      backgroundImage: user.profilePictureUrl ? `url(${user.profilePictureUrl})` : "none",
+                      backgroundSize: "cover", backgroundPosition: "center"
+                   }}>
+                      {!user.profilePictureUrl && user.displayName.charAt(0).toUpperCase()}
+                   </div>
+                   <span
+                    style={{
+                      position: "absolute", bottom: 0, right: 0, width: 12, height: 12,
+                      backgroundColor: isOnline ? "#44b700" : "#CCC",
+                      borderRadius: "50%", border: "2px solid white"
+                    }}
+                  />
+                </div>
+                
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: "#3E3663" }}>
-                    {user.displayName}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#7C75A6" }}>
-                    {user.email}
-                  </div>
+                  <div style={{ fontWeight: 600, color: "#3E3663" }}>{user.displayName}</div>
                   <div
                     style={{
-                      fontSize: 11,
-                      color: "#9B95C9",
-                      marginTop: 2,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 8,
+                      fontSize: 11, color: "#9B95C9", marginTop: 2, display: "flex",
+                      justifyContent: "space-between", gap: 8,
                     }}
                   >
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: 120,
-                      }}
-                    >
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
                       {lastMessageText}
                     </span>
                     <div style={{ display: "flex", gap: 6 }}>
                       {lastMessageTime && <span>{lastMessageTime}</span>}
                       {unreadCount > 0 && (
-                        <span
-                          style={{
-                            minWidth: 18,
-                            height: 18,
-                            borderRadius: 9,
-                            backgroundColor: "#6F79FF",
-                            color: "white",
-                            fontSize: 11,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                        <span style={{
+                            minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#6F79FF",
+                            color: "white", fontSize: 11, display: "inline-flex", alignItems: "center", justifyContent: "center",
                           }}
                         >
                           {unreadCount}
@@ -509,37 +623,63 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       </div>
 
       {/* SAĞ PANEL */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)",
-        }}
-      >
-        {/* ÜST BAR */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)" }}>
+
+        {/* ÜST BAR (Sağ Panel Header) */}
         <div
           style={{
+            height: "65px",
             background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
             color: "white",
-            padding: "14px 18px",
+            padding: "0 20px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            flexShrink: 0,
           }}
         >
-          {/* 👤 SOL: KULLANICI + ÇEVRİMİÇİ */}
+          {/* SOL: KULLANICI + ÇEVRİMİÇİ */}
           {peer ? (
-            <div>
-              <div style={{ fontWeight: 600 }}>{peer.name}</div>
-              <div style={{ fontSize: 12, opacity: 0.85 }}>
-                {isPeerOnline
-                  ? "Çevrimiçi"
-                  : lastSeenText ?? "Son görülme yakınlarda"}
-              </div>
+            <div 
+               // TIKLAMA SADECE KULLANICI VARSA AKTİF
+               onClick={handleContactClick}
+               style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 12, 
+                  cursor: "pointer", // El işareti sadece burada çıkar
+                  padding: "5px 10px 5px 0",
+                  borderRadius: "8px",
+                  transition: "background 0.2s"
+               }}
+               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)"}
+               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            >
+               {/* Sohbet ettiğin kişinin resmi */}
+               <div style={{
+                  width: 40, height: 40, 
+                  borderRadius: "50%",
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: "white", fontWeight: "bold", fontSize: "16px",
+                  backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none",
+                  backgroundSize: "cover", backgroundPosition: "center",
+                  border: "1.5px solid rgba(255,255,255,0.6)"
+               }}>
+                  {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
+               </div>
+               
+               {/* İsim ve Durum Bilgisi */}
+               <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, lineHeight: "1.2" }}>{peer.name}</div>
+                  <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2" }}>
+                    {isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"}
+                  </div>
+               </div>
             </div>
           ) : (
-            <strong>Sohbet Seç</strong>
+            // KULLANICI SEÇİLİ DEĞİLSE SADECE YAZI (Tıklanamaz)
+            <strong style={{ fontSize: "18px", marginLeft: "10px" }}>Sohbet Seç</strong>
           )}
 
           {/* 🚪 SAĞ: ÇIKIŞ */}
@@ -560,160 +700,67 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           </button>
         </div>
 
-
         {/* MESAJLAR ALANI */}
-      <div
-        ref={scrollRef}   
-        onScroll={handleScroll} 
-        style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}
-      >
-        {}
-        {isLoadingHistory && (
-          <div style={{ textAlign: "center", padding: "10px", color: "#6F79FF", fontSize: "13px", fontWeight: 600 }}>
-            ⏳ Eski mesajlar yükleniyor...
-          </div>
-        )}
+        <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
+          {isLoadingHistory && (
+             <div style={{ textAlign: "center", padding: "10px", color: "#6F79FF", fontSize: "13px", fontWeight: 600 }}>⏳ Eski mesajlar yükleniyor...</div>
+          )}
+          <div style={{ maxWidth: 1480, margin: "0 auto" }}>
+            {messages.map((m, index) => {
+              const isMine = m.senderId === me.id;
+              const time = formatTime(m.createdAt);
 
-        <div
-          style={{
-            maxWidth: 1180,
-            margin: "0 auto",
-          }}
-        >
-          {messages.map((m, index) => {
-            const isMine = m.senderId === me.id;
-            const time = formatTime(m.createdAt);
-
-            // --- TARİH AYIRACI MANTIĞI ---
-            let showDateSeparator = false;
-            const currentMessageDate = new Date(m.createdAt).toDateString(); // "Mon Dec 09 2025" formatı
-            if (index === 0) {
-              // İlk mesajsa kesinlikle tarihi göster
-              showDateSeparator = true;
-            } else {
-              // Önceki mesajı al
-              const prevMessage = messages[index - 1];
-              const prevMessageDate = new Date(prevMessage.createdAt).toDateString();
-              // Eğer gün stringleri farklıysa, gün değişmiş demektir
-              if (currentMessageDate !== prevMessageDate) {
+              let showDateSeparator = false;
+              const currentMessageDate = new Date(m.createdAt).toDateString();
+              if (index === 0) {
                 showDateSeparator = true;
+              } else {
+                const prevMessage = messages[index - 1];
+                const prevMessageDate = new Date(prevMessage.createdAt).toDateString();
+                if (currentMessageDate !== prevMessageDate) showDateSeparator = true;
               }
-            }
 
-            return (
-              <div key={m.id} style={{ display: "flex", flexDirection: "column" }}>
-                
-                {/* TARİH AYIRACI (MOR TEMA) */}
-                {/* showDateSeparator burada kullanıldığı için hata gidecek */}
-                {showDateSeparator && (
-                  <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px 0" }}>
-                    <div
-                      style={{
-                        backgroundColor: "#EAE6FF", // Açık mor arka plan
-                        color: "#6F79FF",           // Koyu mor yazı
-                        padding: "6px 14px",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-                        textAlign: "center"
-                      }}
-                    >
-                      {/* formatDateLabel burada kullanıldığı için hata gidecek */}
-                      {formatDateLabel(m.createdAt)}
+              return (
+                <div key={m.id} style={{ display: "flex", flexDirection: "column" }}>
+                  {showDateSeparator && (
+                    <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px 0" }}>
+                      <div style={{ backgroundColor: "#EAE6FF", color: "#6F79FF", padding: "6px 14px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, boxShadow: "0 2px 5px rgba(0,0,0,0.05)", textAlign: "center" }}>
+                        {formatDateLabel(m.createdAt)}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {/* MESAJ BALONU */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: isMine ? "flex-end" : "flex-start",
-                    marginBottom: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
-                      borderRadius: 16,
-                      // WhatsApp tarzı köşe kıvrımları için opsiyonel:
-                      borderTopRightRadius: isMine ? 0 : 16,
-                      borderTopLeftRadius: !isMine ? 0 : 16,
-                      padding: "10px 14px",
-                      maxWidth: "70%",
-                      boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                      position: "relative"
-                    }}
-                  >
-                    <div style={{ color: "#3E3663" }}>{m.content}</div>
-                    <div
-                      style={{
-                        textAlign: "right",
-                        fontSize: 11,
-                        marginTop: 4,
-                        color: "#6F79FF",
-                      }}
-                    >
-                      {time} {isMine && renderStatusTicks(m.status)}
+                  )}
+                  <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+                    <div style={{
+                        backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
+                        borderRadius: 16, borderTopRightRadius: isMine ? 0 : 16, borderTopLeftRadius: !isMine ? 0 : 16,
+                        padding: "10px 14px", maxWidth: "70%", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", position: "relative"
+                      }}>
+                      <div style={{ color: "#3E3663" }}>{m.content}</div>
+                      <div style={{ textAlign: "right", fontSize: 11, marginTop: 4, color: "#6F79FF" }}>
+                        {time} {isMine && renderStatusTicks(m.status)}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-          
-          {/* Otomatik scroll için alt çapa */}
-          <div ref={messagesEndRef} />
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
-      </div>
-
 
         {/* INPUT */}
-        <div
-          style={{
-            padding: 12,
-            display: "flex",
-            gap: 10,
-            backgroundColor: "#F5F3FF",
-            borderTop: "1px solid #DDD6FF",
-          }}
-        >
+        <div style={{ padding: 12, display: "flex", gap: 10, backgroundColor: "#F5F3FF", borderTop: "1px solid #DDD6FF" }}>
           <input
-            style={{
-              flex: 1,
-              padding: 12,
-              borderRadius: 25,
-              border: "1px solid #DDD6FF",
-              outline: "none",
-              backgroundColor: "#FFFFFF",
-              color: "#3E3663",
-            }}
-            value={newMessage}
-            onChange={handleInputChange}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Mesaj yaz..."
+            style={{ flex: 1, padding: 12, borderRadius: 25, border: "1px solid #DDD6FF", outline: "none", backgroundColor: "#FFFFFF", color: "#3E3663" }}
+            value={newMessage} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="Mesaj yaz..."
           />
-
-          <button
-            onClick={handleSend}
-            style={{
-              padding: "12px 22px",
-              borderRadius: 25,
-              background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
-              border: "none",
-              color: "white",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={handleSend} style={{ padding: "12px 22px", borderRadius: 25, background: "linear-gradient(90deg, #6F79FF, #9B8CFF)", border: "none", color: "white", fontWeight: 600, cursor: "pointer" }}>
             Gönder
           </button>
         </div>
       </div>
     </div>
   );
-
 };
 
 export default ChatLayout;
