@@ -61,8 +61,9 @@ public class ChatService {
     }
 
     public Page<ChatMessageResponse> getMessages(Long conversationId, int page, int size, Long viewerId) {
+
         Page<Message> pageResult = messageRepository
-                .findByConversationIdOrderByCreatedAtAsc(conversationId, PageRequest.of(page, size));
+                .findByConversationIdOrderByCreatedAtDesc(conversationId, PageRequest.of(page, size));
 
         List<Message> toUpdate = pageResult.getContent().stream()
                 .filter(m -> !m.getSender().getId().equals(viewerId))             // bana gelenler

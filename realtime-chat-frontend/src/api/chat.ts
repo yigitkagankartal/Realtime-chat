@@ -45,12 +45,22 @@ export const createOrGetConversation = async (
 
 export const getMessages = async (
   conversationId: number,
-  viewerId: number
+  viewerId: number,
+  page: number = 0
 ): Promise<ChatMessageResponse[]> => {
+
+  // Backend'e page parametresini gönderiyoruz
   const res = await api.get(`/api/conversations/${conversationId}/messages`, {
-    params: { page: 0, size: 50, viewerId },
+    params: { page: page, size: 50, viewerId },
   });
-  return res.data.content as ChatMessageResponse[];
+  if (res.data && Array.isArray(res.data.content)) {
+    return res.data.content as ChatMessageResponse[];
+  }
+  // Eğer backend bir gün değişir de direkt array dönerse diye önlem:
+  if (Array.isArray(res.data)) {
+    return res.data as ChatMessageResponse[];
+  }
+  return [];
 };
 
 export const markConversationSeen = async (
@@ -61,4 +71,6 @@ export const markConversationSeen = async (
     params: { viewerId },
   });
 };
+
+
 

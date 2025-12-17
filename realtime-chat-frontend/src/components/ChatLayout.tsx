@@ -26,9 +26,9 @@ interface ChatLayoutProps {
 const formatTime = (iso: string | undefined) =>
   iso
     ? new Date(iso).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+      hour: "2-digit",
+      minute: "2-digit",
+    })
     : "";
 
 // Tik seçici – sadece SEEN → çift tik, diğerleri tek tik
@@ -45,6 +45,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     useState<ConversationResponse | null>(null);
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [page, setPage] = useState(0); // Şu an kaçıncı sayfadayız?
+  const [hasMore, setHasMore] = useState(true); // Daha eski mesaj var mı?
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false); // Yükleniyor mu?
+  const scrollRef = useRef<HTMLDivElement>(null); // Mesaj kutusunu seçmek için
+  const [prevScrollHeight, setPrevScrollHeight] = useState<number | null>(null); // Zıplamayı önlemek için
 
   // Her konuşmanın mesajlarını cachelemek için (sol listede son mesaj & unread için)
   const [messageCache, setMessageCache] = useState<
@@ -131,7 +136,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         convList.map(async (c) => {
           try {
             const history = await getMessages(c.id, me.id);
-            cache[c.id] = history;
+            cache[c.id] = [...history].reverse();
           } catch (e) {
             console.error("Mesajlar yüklenirken hata (conversationId=", c.id, "):", e);
           }
@@ -147,25 +152,29 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   // Sohbet aç
   const openConversationWith = async (otherUserId: number) => {
     const conv = await createOrGetConversation(otherUserId);
-
-    // Eğer yeni bir conversation oluştuysa state'e ekle
-    setConversations((prev) =>
-      prev.some((c) => c.id === conv.id) ? prev : [...prev, conv]
-    );
-
     setSelectedConversation(conv);
+    setPage(0);
+    setHasMore(true);
+    setIsLoadingHistory(false);
 
-    const history = await getMessages(conv.id, me.id); // viewerId olarak me.id
-    setMessages(history);
+    const history = await getMessages(conv.id, me.id, 0);
+
+    if (history.length < 50) {
+      setHasMore(false);
+    }
+
+    const sortedHistory = [...history].reverse();
+
+    setMessages(sortedHistory);
 
     // cache'i güncelle
     setMessageCache((prev) => ({
       ...prev,
-      [conv.id]: history,
+      [conv.id]: sortedHistory,
     }));
 
     // sohbeti açar açmaz SEEN olarak işaretle
-    markConversationSeen(conv.id, me.id).catch(() => {});
+    markConversationSeen(conv.id, me.id).catch(() => { });
   };
 
   const handleSend = () => {
@@ -193,11 +202,13 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       ? users.find((u) => u.id === typingUserId)
       : undefined;
 
-  {typingUser && (
-  <div style={{ display: "none" }}>
-    {typingUser.displayName}
-  </div>
-)}
+  {
+    typingUser && (
+      <div style={{ display: "none" }}>
+        {typingUser.displayName}
+      </div>
+    )
+  }
 
   // Seçili konuşmadaki karşı tarafın bilgisi
   const getPeerInfo = () => {
@@ -214,6 +225,38 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       id: selectedConversation.user1Id,
       name: selectedConversation.user1Name,
     };
+  };
+
+  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+
+    if (target.scrollTop === 0 && hasMore && !isLoadingHistory) {
+
+      setIsLoadingHistory(true);
+
+      setPrevScrollHeight(target.scrollHeight);
+
+      const nextPage = page + 1;
+
+      const oldMessages = await getMessages(selectedConversation!.id, me.id, nextPage);
+
+      if (oldMessages.length === 0) {
+        setHasMore(false);
+        setIsLoadingHistory(false);
+        return;
+      }
+
+      if (oldMessages.length < 50) {
+        setHasMore(false);
+      }
+
+      const sortedOldMessages = [...oldMessages].reverse();
+
+      setMessages((prev) => [...sortedOldMessages, ...prev]);
+
+      setPage(nextPage);
+      setIsLoadingHistory(false);
+    }
   };
 
   const peer = getPeerInfo();
@@ -253,13 +296,18 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       }
     }
   }
-
-
   // Auto-scroll
   useEffect(() => {
     if (!selectedConversation) return;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (prevScrollHeight) return; 
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages, selectedConversation?.id]);
+  useEffect(() => {
+    if (prevScrollHeight && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight - prevScrollHeight;
+      setPrevScrollHeight(null);
+    }
+  }, [messages]); // Mesajlar değişince çalışır
 
   // Sol panel için: kullanıcı + conversation + son mesaj + unread bilgisi
   const sidebarItems = users
@@ -283,7 +331,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
       const lastMessageText = lastMessage
         ? (lastMessage.senderId === me.id ? "Sen: " : "") +
-          lastMessage.content
+        lastMessage.content
         : "Henüz mesaj yok";
 
       const lastMessageTime = lastMessage
@@ -312,261 +360,273 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     .sort((a, b) => b.lastMessageDate - a.lastMessageDate);
 
   return (
-  <div
-    style={{
-      display: "flex",
-      height: "100vh",
-      fontFamily: "Segoe UI, sans-serif",
-      background: "linear-gradient(180deg, #C6A7FF 0%, #9B8CFF 45%, #6F79FF 100%)",
-    }}
-  >
-    {/* SOL PANEL */}
     <div
       style={{
-        width: 300,
-        borderRight: "1px solid #DDD6FF",
-        backgroundColor: "#F5F3FF",
-        padding: "12px 14px",
-        overflowY: "auto",
+        display: "flex",
+        height: "100vh",
+        fontFamily: "Segoe UI, sans-serif",
+        background: "linear-gradient(180deg, #C6A7FF 0%, #9B8CFF 45%, #6F79FF 100%)",
       }}
     >
-      <h3 style={{ marginTop: 0, color: "#3E3663" }}>Sohbetler</h3>
+      {/* SOL PANEL */}
+      <div
+        style={{
+          width: 300,
+          borderRight: "1px solid #DDD6FF",
+          backgroundColor: "#F5F3FF",
+          padding: "12px 14px",
+          overflowY: "auto",
+        }}
+      >
+        <h3 style={{ marginTop: 0, color: "#3E3663" }}>Sohbetler</h3>
 
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {sidebarItems.map(
-          ({
-            user,
-            isOnline,
-            lastMessageText,
-            lastMessageTime,
-            unreadCount,
-          }) => (
-            <li
-              key={user.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                marginBottom: 8,
-                padding: "10px 12px",
-                borderRadius: 14,
-                backgroundColor: "#FFFFFF",
-                cursor: "pointer",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
-              }}
-              onClick={() => openConversationWith(user.id)}
-            >
-              <span
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {sidebarItems.map(
+            ({
+              user,
+              isOnline,
+              lastMessageText,
+              lastMessageTime,
+              unreadCount,
+            }) => (
+              <li
+                key={user.id}
                 style={{
-                  width: 10,
-                  height: 10,
-                  backgroundColor: isOnline ? "#6F79FF" : "#CCC",
-                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 8,
+                  padding: "10px 12px",
+                  borderRadius: 14,
+                  backgroundColor: "#FFFFFF",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
                 }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, color: "#3E3663" }}>
-                  {user.displayName}
-                </div>
-                <div style={{ fontSize: 12, color: "#7C75A6" }}>
-                  {user.email}
-                </div>
-                <div
+                onClick={() => openConversationWith(user.id)}
+              >
+                <span
                   style={{
-                    fontSize: 11,
-                    color: "#9B95C9",
-                    marginTop: 2,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 8,
+                    width: 10,
+                    height: 10,
+                    backgroundColor: isOnline ? "#6F79FF" : "#CCC",
+                    borderRadius: "50%",
                   }}
-                >
-                  <span
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, color: "#3E3663" }}>
+                    {user.displayName}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#7C75A6" }}>
+                    {user.email}
+                  </div>
+                  <div
                     style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      maxWidth: 120,
+                      fontSize: 11,
+                      color: "#9B95C9",
+                      marginTop: 2,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 8,
                     }}
                   >
-                    {lastMessageText}
-                  </span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {lastMessageTime && <span>{lastMessageTime}</span>}
-                    {unreadCount > 0 && (
-                      <span
-                        style={{
-                          minWidth: 18,
-                          height: 18,
-                          borderRadius: 9,
-                          backgroundColor: "#6F79FF",
-                          color: "white",
-                          fontSize: 11,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {unreadCount}
-                      </span>
-                    )}
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: 120,
+                      }}
+                    >
+                      {lastMessageText}
+                    </span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {lastMessageTime && <span>{lastMessageTime}</span>}
+                      {unreadCount > 0 && (
+                        <span
+                          style={{
+                            minWidth: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: "#6F79FF",
+                            color: "white",
+                            fontSize: 11,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            )
+          )}
+        </ul>
+      </div>
+
+      {/* SAĞ PANEL */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)",
+        }}
+      >
+        {/* ÜST BAR */}
+        <div
+          style={{
+            background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
+            color: "white",
+            padding: "14px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* 👤 SOL: KULLANICI + ÇEVRİMİÇİ */}
+          {peer ? (
+            <div>
+              <div style={{ fontWeight: 600 }}>{peer.name}</div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>
+                {isPeerOnline
+                  ? "Çevrimiçi"
+                  : lastSeenText ?? "Son görülme yakınlarda"}
+              </div>
+            </div>
+          ) : (
+            <strong>Sohbet Seç</strong>
+          )}
+
+          {/* 🚪 SAĞ: ÇIKIŞ */}
+          <button
+            onClick={onLogout}
+            title="Çıkış Yap"
+            style={{
+              background: "rgba(255,255,255,0.15)",
+              border: "none",
+              color: "white",
+              padding: "8px 16px",
+              borderRadius: 20,
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Çıkış
+          </button>
+        </div>
+
+
+        {/* MESAJLAR ALANI */}
+      <div
+        ref={scrollRef}   
+        onScroll={handleScroll} 
+        style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}
+      >
+        {}
+        {isLoadingHistory && (
+          <div style={{ textAlign: "center", padding: "10px", color: "#6F79FF", fontSize: "13px", fontWeight: 600 }}>
+            ⏳ Eski mesajlar yükleniyor...
+          </div>
+        )}
+
+        <div
+          style={{
+            maxWidth: 1180,
+            margin: "0 auto",
+          }}
+        >
+          {messages.map((m) => {
+            const isMine = m.senderId === me.id;
+            const time = formatTime(m.createdAt);
+
+            return (
+              <div
+                key={m.id}
+                style={{
+                  display: "flex",
+                  justifyContent: isMine ? "flex-end" : "flex-start",
+                  marginBottom: 12,
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
+                    borderRadius: 16,
+                    padding: "10px 14px",
+                    maxWidth: "70%",
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <div style={{ color: "#3E3663" }}>{m.content}</div>
+                  <div
+                    style={{
+                      textAlign: "right",
+                      fontSize: 11,
+                      marginTop: 4,
+                      color: "#6F79FF",
+                    }}
+                  >
+                    {time} {isMine && renderStatusTicks(m.status)}
                   </div>
                 </div>
               </div>
-            </li>
-          )
-        )}
-      </ul>
-    </div>
-
-    {/* SAĞ PANEL */}
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)",
-      }}
-    >
-     {/* ÜST BAR */}
-<div
-  style={{
-    background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
-    color: "white",
-    padding: "14px 18px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  }}
->
-  {/* 👤 SOL: KULLANICI + ÇEVRİMİÇİ */}
-  {peer ? (
-    <div>
-      <div style={{ fontWeight: 600 }}>{peer.name}</div>
-      <div style={{ fontSize: 12, opacity: 0.85 }}>
-        {isPeerOnline
-          ? "Çevrimiçi"
-          : lastSeenText ?? "Son görülme yakınlarda"}
+            );
+          })}
+          
+          {/* Otomatik scroll için alt çapa */}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
-    </div>
-  ) : (
-    <strong>Sohbet Seç</strong>
-  )}
-
-  {/* 🚪 SAĞ: ÇIKIŞ */}
-  <button
-    onClick={onLogout}
-    title="Çıkış Yap"
-    style={{
-      background: "rgba(255,255,255,0.15)",
-      border: "none",
-      color: "white",
-      padding: "8px 16px",
-      borderRadius: 20,
-      cursor: "pointer",
-      fontWeight: 600,
-    }}
-  >
-    Çıkış
-  </button>
-</div>
 
 
-      {/* MESAJLAR */}
-<div style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
-  {/* 🔥 WHATSAPP WEB GİBİ MESAJ KOLONU */}
-  <div
-    style={{
-      maxWidth: 1180,
-      margin: "0 auto",
-    }}
-  >
-    {messages.map((m) => {
-      const isMine = m.senderId === me.id;
-      const time = formatTime(m.createdAt);
-
-      return (
+        {/* INPUT */}
         <div
-          key={m.id}
           style={{
+            padding: 12,
             display: "flex",
-            justifyContent: isMine ? "flex-end" : "flex-start",
-            marginBottom: 12,
+            gap: 10,
+            backgroundColor: "#F5F3FF",
+            borderTop: "1px solid #DDD6FF",
           }}
         >
-          <div
+          <input
             style={{
-              backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
-              borderRadius: 16,
-              padding: "10px 14px",
-              maxWidth: "70%",
-              boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+              flex: 1,
+              padding: 12,
+              borderRadius: 25,
+              border: "1px solid #DDD6FF",
+              outline: "none",
+              backgroundColor: "#FFFFFF",
+              color: "#3E3663",
+            }}
+            value={newMessage}
+            onChange={handleInputChange}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Mesaj yaz..."
+          />
+
+          <button
+            onClick={handleSend}
+            style={{
+              padding: "12px 22px",
+              borderRadius: 25,
+              background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
+              border: "none",
+              color: "white",
+              fontWeight: 600,
+              cursor: "pointer",
             }}
           >
-            <div style={{ color: "#3E3663" }}>{m.content}</div>
-            <div
-              style={{
-                textAlign: "right",
-                fontSize: 11,
-                marginTop: 4,
-                color: "#6F79FF",
-              }}
-            >
-              {time} {isMine && renderStatusTicks(m.status)}
-            </div>
-          </div>
+            Gönder
+          </button>
         </div>
-      );
-    })}
-    <div ref={messagesEndRef} />
-  </div>
-</div>
-
-
-      {/* INPUT */}
-      <div
-        style={{
-          padding: 12,
-          display: "flex",
-          gap: 10,
-          backgroundColor: "#F5F3FF",
-          borderTop: "1px solid #DDD6FF",
-        }}
-      >
-        <input
-          style={{
-            flex: 1,
-            padding: 12,
-            borderRadius: 25,
-            border: "1px solid #DDD6FF",
-            outline: "none",
-            backgroundColor: "#FFFFFF",
-            color: "#3E3663",
-          }}
-          value={newMessage}
-          onChange={handleInputChange}
-          onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          placeholder="Mesaj yaz..."
-        />
-
-        <button
-          onClick={handleSend}
-          style={{
-            padding: "12px 22px",
-            borderRadius: 25,
-            background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
-            border: "none",
-            color: "white",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Gönder
-        </button>
       </div>
     </div>
-  </div>
-);
+  );
 
 };
 
