@@ -11,6 +11,8 @@ public class ActivationAuthDtos {
             Long id,
             String displayName,
             String phoneNumber,
-            String token
+            String token,
+            String profilePictureUrl,
+            String about
     ) {}
 }

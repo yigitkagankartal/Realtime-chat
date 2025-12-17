@@ -76,7 +76,9 @@ public class ActivationAuthService {
                 user.getId(),
                 user.getDisplayName(),
                 user.getPhoneNumber(),
-                token
+                token,
+                user.getProfilePictureUrl(),
+                user.getAbout()
         );
     }
 }
