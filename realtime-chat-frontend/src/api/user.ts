@@ -7,7 +7,7 @@ export const uploadProfileImage = async (file: File) => {
 
   // Content-Type belirtmemize gerek yok, axios FormData görünce otomatik ayarlar
   // ama garanti olsun diye bazen belirtilir.
-  const response = await client.post("/users/me/image", formData, {
+  const response = await client.post("/api/users/me/image", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
