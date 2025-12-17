@@ -35,7 +35,7 @@ const startOfDay = (d: Date) => {
 const formatDateLabel = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
-  
+
   const today = startOfDay(now);
   const messageDate = startOfDay(date);
   const yesterday = new Date(today);
@@ -199,7 +199,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
   // Sohbet aç
   const openConversationWith = async (otherUserId: number) => {
-    setContactSidebarOpen(false); 
+    setContactSidebarOpen(false);
     setContactInfo(null);
     const conv = await createOrGetConversation(otherUserId);
     setSelectedConversation(conv);
@@ -273,8 +273,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       name: userObj
         ? userObj.displayName
         : selectedConversation.user1Id === me.id
-        ? selectedConversation.user2Name
-        : selectedConversation.user1Name,
+          ? selectedConversation.user2Name
+          : selectedConversation.user1Name,
       profilePictureUrl: userObj?.profilePictureUrl,
     };
   };
@@ -351,7 +351,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   // Auto-scroll
   useEffect(() => {
     if (!selectedConversation) return;
-    if (prevScrollHeight) return; 
+    if (prevScrollHeight) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages, selectedConversation?.id]);
   useEffect(() => {
@@ -372,19 +372,19 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     setCurrentUser(updated);
   };
 
-// Sağ Header'a tıklayınca çalışacak
+  // Sağ Header'a tıklayınca çalışacak
   const handleContactClick = async () => {
     if (!peer) return;
-    
+
     // Sidebar'ı aç
     setContactSidebarOpen(true);
-    
+
     try {
-        // Backend'den güncel veriyi (About, Resim vs) çek
-        const data = await getUserById(peer.id);
-        setContactInfo(data);
+      // Backend'den güncel veriyi (About, Resim vs) çek
+      const data = await getUserById(peer.id);
+      setContactInfo(data);
     } catch (error) {
-        console.error("Kullanıcı detayı çekilemedi", error);
+      console.error("Kullanıcı detayı çekilemedi", error);
     }
   };
 
@@ -457,18 +457,18 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           }}
           onClick={() => setViewingImage(null)} // Boşluğa tıklayınca kapat
         >
-          <img 
-            src={viewingImage} 
-            alt="Full Size" 
-            style={{ maxHeight: "85%", maxWidth: "85%", borderRadius: 10, boxShadow: "0 0 20px rgba(0,0,0,0.5)" }} 
+          <img
+            src={viewingImage}
+            alt="Full Size"
+            style={{ maxHeight: "85%", maxWidth: "85%", borderRadius: 10, boxShadow: "0 0 20px rgba(0,0,0,0.5)" }}
           />
           <button
-             onClick={() => setViewingImage(null)}
-             style={{
-               position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.2)",
-               border: "none", color: "white", fontSize: 24, cursor: "pointer", borderRadius: "50%",
-               width: 40, height: 40, display:"flex", alignItems:"center", justifyContent:"center"
-             }}
+            onClick={() => setViewingImage(null)}
+            style={{
+              position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.2)",
+              border: "none", color: "white", fontSize: 24, cursor: "pointer", borderRadius: "50%",
+              width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center"
+            }}
           >
             ✕
           </button>
@@ -495,7 +495,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       />
 
       {/* 4. YENİ BİLEŞEN: CONTACT INFO SIDEBAR (SAĞ) */}
-      <ContactInfoSidebar 
+      <ContactInfoSidebar
         isOpen={contactSidebarOpen}
         onClose={() => setContactSidebarOpen(false)}
         user={contactInfo} // API'den gelen detaylı veri
@@ -552,8 +552,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               {!currentUser.profilePictureUrl && currentUser.displayName.charAt(0).toUpperCase()}
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: 15, fontWeight: 700, color: "#3E3663" }}>Profilim</span>
-                <span style={{ fontSize: 11, color: "#8E88B9" }}>Düzenlemek için tıkla</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "#3E3663" }}>Profilim</span>
+              <span style={{ fontSize: 11, color: "#8E88B9" }}>Düzenlemek için tıkla</span>
             </div>
           </div>
         </div>
@@ -562,62 +562,62 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {sidebarItems.map(({ user, isOnline, lastMessageText, lastMessageTime, unreadCount }) => (
-              <li
-                key={user.id}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
-                  padding: "10px 12px", borderRadius: 14, backgroundColor: "#FFFFFF",
-                  cursor: "pointer", boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
-                }}
-                onClick={() => openConversationWith(user.id)}
-              >
-                <div style={{ position: "relative" }}>
-                   <div style={{
-                      width: 40, height: 40, borderRadius: "50%",
-                      backgroundColor: "#EAE6FF",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "16px", color: "#6F79FF", fontWeight: "600",
-                      backgroundImage: user.profilePictureUrl ? `url(${user.profilePictureUrl})` : "none",
-                      backgroundSize: "cover", backgroundPosition: "center"
-                   }}>
-                      {!user.profilePictureUrl && user.displayName.charAt(0).toUpperCase()}
-                   </div>
-                   <span
-                    style={{
-                      position: "absolute", bottom: 0, right: 0, width: 12, height: 12,
-                      backgroundColor: isOnline ? "#44b700" : "#CCC",
-                      borderRadius: "50%", border: "2px solid white"
-                    }}
-                  />
+            <li
+              key={user.id}
+              style={{
+                display: "flex", alignItems: "center", gap: 10, marginBottom: 8,
+                padding: "10px 12px", borderRadius: 14, backgroundColor: "#FFFFFF",
+                cursor: "pointer", boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+              }}
+              onClick={() => openConversationWith(user.id)}
+            >
+              <div style={{ position: "relative" }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  backgroundColor: "#EAE6FF",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "16px", color: "#6F79FF", fontWeight: "600",
+                  backgroundImage: user.profilePictureUrl ? `url(${user.profilePictureUrl})` : "none",
+                  backgroundSize: "cover", backgroundPosition: "center"
+                }}>
+                  {!user.profilePictureUrl && user.displayName.charAt(0).toUpperCase()}
                 </div>
-                
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: "#3E3663" }}>{user.displayName}</div>
-                  <div
-                    style={{
-                      fontSize: 11, color: "#9B95C9", marginTop: 2, display: "flex",
-                      justifyContent: "space-between", gap: 8,
-                    }}
-                  >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
-                      {lastMessageText}
-                    </span>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      {lastMessageTime && <span>{lastMessageTime}</span>}
-                      {unreadCount > 0 && (
-                        <span style={{
-                            minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#6F79FF",
-                            color: "white", fontSize: 11, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                          }}
-                        >
-                          {unreadCount}
-                        </span>
-                      )}
-                    </div>
+                <span
+                  style={{
+                    position: "absolute", bottom: 0, right: 0, width: 12, height: 12,
+                    backgroundColor: isOnline ? "#44b700" : "#CCC",
+                    borderRadius: "50%", border: "2px solid white"
+                  }}
+                />
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, color: "#3E3663" }}>{user.displayName}</div>
+                <div
+                  style={{
+                    fontSize: 11, color: "#9B95C9", marginTop: 2, display: "flex",
+                    justifyContent: "space-between", gap: 8,
+                  }}
+                >
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>
+                    {lastMessageText}
+                  </span>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {lastMessageTime && <span>{lastMessageTime}</span>}
+                    {unreadCount > 0 && (
+                      <span style={{
+                        minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#6F79FF",
+                        color: "white", fontSize: 11, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      }}
+                      >
+                        {unreadCount}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </li>
-            )
+              </div>
+            </li>
+          )
           )}
         </ul>
       </div>
@@ -640,42 +640,42 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         >
           {/* SOL: KULLANICI + ÇEVRİMİÇİ */}
           {peer ? (
-            <div 
-               // TIKLAMA SADECE KULLANICI VARSA AKTİF
-               onClick={handleContactClick}
-               style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: 12, 
-                  cursor: "pointer", // El işareti sadece burada çıkar
-                  padding: "5px 10px 5px 0",
-                  borderRadius: "8px",
-                  transition: "background 0.2s"
-               }}
-               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)"}
-               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            <div
+              // TIKLAMA SADECE KULLANICI VARSA AKTİF
+              onClick={handleContactClick}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                cursor: "pointer", // El işareti sadece burada çıkar
+                padding: "5px 10px 5px 0",
+                borderRadius: "8px",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
             >
-               {/* Sohbet ettiğin kişinin resmi */}
-               <div style={{
-                  width: 40, height: 40, 
-                  borderRadius: "50%",
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "white", fontWeight: "bold", fontSize: "16px",
-                  backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none",
-                  backgroundSize: "cover", backgroundPosition: "center",
-                  border: "1.5px solid rgba(255,255,255,0.6)"
-               }}>
-                  {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
-               </div>
-               
-               {/* İsim ve Durum Bilgisi */}
-               <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, lineHeight: "1.2" }}>{peer.name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2" }}>
-                    {isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"}
-                  </div>
-               </div>
+              {/* Sohbet ettiğin kişinin resmi */}
+              <div style={{
+                width: 40, height: 40,
+                borderRadius: "50%",
+                backgroundColor: "rgba(255,255,255,0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "white", fontWeight: "bold", fontSize: "16px",
+                backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none",
+                backgroundSize: "cover", backgroundPosition: "center",
+                border: "1.5px solid rgba(255,255,255,0.6)"
+              }}>
+                {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
+              </div>
+
+              {/* İsim ve Durum Bilgisi */}
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ fontWeight: 600, fontSize: 15, lineHeight: "1.2" }}>{peer.name}</div>
+                <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2" }}>
+                  {isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"}
+                </div>
+              </div>
             </div>
           ) : (
             // KULLANICI SEÇİLİ DEĞİLSE SADECE YAZI (Tıklanamaz)
@@ -703,47 +703,49 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         {/* MESAJLAR ALANI */}
         <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
           {isLoadingHistory && (
-             <div style={{ textAlign: "center", padding: "10px", color: "#6F79FF", fontSize: "13px", fontWeight: 600 }}>⏳ Eski mesajlar yükleniyor...</div>
+            <div style={{ textAlign: "center", padding: "10px", color: "#6F79FF", fontSize: "13px", fontWeight: 600 }}>⏳ Eski mesajlar yükleniyor...</div>
           )}
           <div style={{ maxWidth: 1480, margin: "0 auto" }}>
-            {messages.map((m, index) => {
-              const isMine = m.senderId === me.id;
-              const time = formatTime(m.createdAt);
+            {[...messages]
+              .sort((a, b) => a.id - b.id)
+              .map((m, index) => {
+                const isMine = m.senderId === me.id;
+                const time = formatTime(m.createdAt);
 
-              let showDateSeparator = false;
-              const currentMessageDate = new Date(m.createdAt).toDateString();
-              if (index === 0) {
-                showDateSeparator = true;
-              } else {
-                const prevMessage = messages[index - 1];
-                const prevMessageDate = new Date(prevMessage.createdAt).toDateString();
-                if (currentMessageDate !== prevMessageDate) showDateSeparator = true;
-              }
+                let showDateSeparator = false;
+                const currentMessageDate = new Date(m.createdAt).toDateString();
+                if (index === 0) {
+                  showDateSeparator = true;
+                } else {
+                  const prevMessage = messages[index - 1];
+                  const prevMessageDate = new Date(prevMessage.createdAt).toDateString();
+                  if (currentMessageDate !== prevMessageDate) showDateSeparator = true;
+                }
 
-              return (
-                <div key={m.id} style={{ display: "flex", flexDirection: "column" }}>
-                  {showDateSeparator && (
-                    <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px 0" }}>
-                      <div style={{ backgroundColor: "#EAE6FF", color: "#6F79FF", padding: "6px 14px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, boxShadow: "0 2px 5px rgba(0,0,0,0.05)", textAlign: "center" }}>
-                        {formatDateLabel(m.createdAt)}
+                return (
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column" }}>
+                    {showDateSeparator && (
+                      <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px 0" }}>
+                        <div style={{ backgroundColor: "#EAE6FF", color: "#6F79FF", padding: "6px 14px", borderRadius: "12px", fontSize: "12px", fontWeight: 600, boxShadow: "0 2px 5px rgba(0,0,0,0.05)", textAlign: "center" }}>
+                          {formatDateLabel(m.createdAt)}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-                    <div style={{
+                    )}
+                    <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+                      <div style={{
                         backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
                         borderRadius: 16, borderTopRightRadius: isMine ? 0 : 16, borderTopLeftRadius: !isMine ? 0 : 16,
                         padding: "10px 14px", maxWidth: "70%", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", position: "relative"
                       }}>
-                      <div style={{ color: "#3E3663" }}>{m.content}</div>
-                      <div style={{ textAlign: "right", fontSize: 11, marginTop: 4, color: "#6F79FF" }}>
-                        {time} {isMine && renderStatusTicks(m.status)}
+                        <div style={{ color: "#3E3663" }}>{m.content}</div>
+                        <div style={{ textAlign: "right", fontSize: 11, marginTop: 4, color: "#6F79FF" }}>
+                          {time} {isMine && renderStatusTicks(m.status)}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
             <div ref={messagesEndRef} />
           </div>
         </div>
