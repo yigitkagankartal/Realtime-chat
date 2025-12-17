@@ -21,7 +21,48 @@ interface ChatLayoutProps {
   onLogout: () => void;
 }
 
+// Tarih nesnesini alıp günün başlangıcına (00:00) çeker (karşılaştırma için)
+const startOfDay = (d: Date) => {
+  const newDate = new Date(d);
+  newDate.setHours(0, 0, 0, 0);
+  return newDate;
+};
 
+// WhatsApp tarzı tarih etiketi oluşturur
+const formatDateLabel = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  
+  const today = startOfDay(now);
+  const messageDate = startOfDay(date);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  // 1. Durum: Bugün
+  if (messageDate.getTime() === today.getTime()) {
+    return "Bugün";
+  }
+
+  // 2. Durum: Dün
+  if (messageDate.getTime() === yesterday.getTime()) {
+    return "Dün";
+  }
+
+  // 3. Durum: Son 1 hafta içindeyse Gün İsmi (Pazartesi, Salı...)
+  const diffTime = Math.abs(today.getTime() - messageDate.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 7) {
+    return date.toLocaleDateString("tr-TR", { weekday: "long" });
+  }
+
+  // 4. Durum: Daha eskiyse tam tarih (09/12/2025)
+  return date.toLocaleDateString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
 // Saat formatı (sadece saat:dakika)
 const formatTime = (iso: string | undefined) =>
   iso
@@ -539,38 +580,83 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
             margin: "0 auto",
           }}
         >
-          {messages.map((m) => {
+          {messages.map((m, index) => {
             const isMine = m.senderId === me.id;
             const time = formatTime(m.createdAt);
 
+            // --- TARİH AYIRACI MANTIĞI ---
+            let showDateSeparator = false;
+            const currentMessageDate = new Date(m.createdAt).toDateString(); // "Mon Dec 09 2025" formatı
+            if (index === 0) {
+              // İlk mesajsa kesinlikle tarihi göster
+              showDateSeparator = true;
+            } else {
+              // Önceki mesajı al
+              const prevMessage = messages[index - 1];
+              const prevMessageDate = new Date(prevMessage.createdAt).toDateString();
+              // Eğer gün stringleri farklıysa, gün değişmiş demektir
+              if (currentMessageDate !== prevMessageDate) {
+                showDateSeparator = true;
+              }
+            }
+
             return (
-              <div
-                key={m.id}
-                style={{
-                  display: "flex",
-                  justifyContent: isMine ? "flex-end" : "flex-start",
-                  marginBottom: 12,
-                }}
-              >
+              <div key={m.id} style={{ display: "flex", flexDirection: "column" }}>
+                
+                {/* TARİH AYIRACI (MOR TEMA) */}
+                {/* showDateSeparator burada kullanıldığı için hata gidecek */}
+                {showDateSeparator && (
+                  <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px 0" }}>
+                    <div
+                      style={{
+                        backgroundColor: "#EAE6FF", // Açık mor arka plan
+                        color: "#6F79FF",           // Koyu mor yazı
+                        padding: "6px 14px",
+                        borderRadius: "12px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                        textAlign: "center"
+                      }}
+                    >
+                      {/* formatDateLabel burada kullanıldığı için hata gidecek */}
+                      {formatDateLabel(m.createdAt)}
+                    </div>
+                  </div>
+                )}
+
+                {/* MESAJ BALONU */}
                 <div
                   style={{
-                    backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
-                    borderRadius: 16,
-                    padding: "10px 14px",
-                    maxWidth: "70%",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                    display: "flex",
+                    justifyContent: isMine ? "flex-end" : "flex-start",
+                    marginBottom: 12,
                   }}
                 >
-                  <div style={{ color: "#3E3663" }}>{m.content}</div>
                   <div
                     style={{
-                      textAlign: "right",
-                      fontSize: 11,
-                      marginTop: 4,
-                      color: "#6F79FF",
+                      backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
+                      borderRadius: 16,
+                      // WhatsApp tarzı köşe kıvrımları için opsiyonel:
+                      borderTopRightRadius: isMine ? 0 : 16,
+                      borderTopLeftRadius: !isMine ? 0 : 16,
+                      padding: "10px 14px",
+                      maxWidth: "70%",
+                      boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                      position: "relative"
                     }}
                   >
-                    {time} {isMine && renderStatusTicks(m.status)}
+                    <div style={{ color: "#3E3663" }}>{m.content}</div>
+                    <div
+                      style={{
+                        textAlign: "right",
+                        fontSize: 11,
+                        marginTop: 4,
+                        color: "#6F79FF",
+                      }}
+                    >
+                      {time} {isMine && renderStatusTicks(m.status)}
+                    </div>
                   </div>
                 </div>
               </div>
