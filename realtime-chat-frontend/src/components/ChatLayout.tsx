@@ -555,12 +555,17 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           <div
             onClick={() => setProfileSidebarOpen(true)}
             style={{
-              display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
-              padding: "6px", borderRadius: "12px", transition: "background 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              cursor: "pointer", // ✅ Sadece imleç el işareti oluyor
+              flex: 1,           // ✅ Boydan boya kaplıyor
+              padding: "8px",
+              borderRadius: "12px",
+              // Hover rengi veya transition kodları SİLİNDİ
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.04)")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
+            {/* Avatar */}
             <div
               style={{
                 width: 42, height: 42, borderRadius: "50%",
@@ -572,14 +577,16 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "18px", color: "#6F79FF", fontWeight: "bold",
                 border: "2px solid white", boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                flexShrink: 0
               }}
             >
               {!currentUser.profilePictureUrl && currentUser.displayName.charAt(0).toUpperCase()}
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "#3E3663" }}>Profilim</span>
-              <span style={{ fontSize: 11, color: "#8E88B9" }}>Düzenlemek için tıkla</span>
-            </div>
+            
+            {/* ✅ Sadece "Profilim" yazısı kaldı, alt metin silindi */}
+            <span style={{ fontSize: 16, fontWeight: 700, color: "#3E3663" }}>
+              Profilim
+            </span>
           </div>
         </div>
 
@@ -657,36 +664,30 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           height: "100vh" // Yüksekliği garantiye al
         }}
       >
-        {/* ÜST BAR (Sağ Panel Header) - TAMAMEN BU BLOĞU YAPIŞTIR */}
+        {/* ÜST BAR (Sağ Panel Header) */}
         <div
           style={{
             height: "65px",
             background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
             color: "white",
-            padding: "0 10px", // Mobilde kenarlara yapışmasın diye padding
+            padding: "0 15px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexShrink: 0,
-            boxShadow: "0 2px 5px rgba(0,0,0,0.1)" // Hafif gölge ekledim, şık durur
+            boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
           }}
         >
-          {/* SOL TARAFTAKİ GRUP (Geri Butonu + Profil Bilgisi) */}
-          <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+          {/* SOL GRUP: (Geri Butonu + Profil/Kişi Bilgisi) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, overflow: "hidden" }}>
             
-            {/* 1. GERİ BUTONU (Sadece Mobilde Görünür) */}
+            {/* 1. GERİ BUTONU (Sadece Mobilde) */}
             {isMobile && (
               <button
                 onClick={() => setSelectedConversation(null)}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "white",
-                  fontSize: "28px", // Biraz büyüttüm kolay basılsın
-                  cursor: "pointer",
-                  marginRight: "4px",
-                  padding: "0 8px",
-                  lineHeight: "1",
+                  background: "transparent", border: "none", color: "white",
+                  fontSize: "26px", cursor: "pointer", padding: "0 8px 0 0",
                   display: "flex", alignItems: "center"
                 }}
               >
@@ -694,27 +695,25 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               </button>
             )}
 
-            {/* 2. KULLANICI BİLGİSİ (Peer Info) */}
+            {/* 2. KULLANICI BİLGİSİ (Boydan Boya Uzayan) */}
             {peer ? (
               <div
                 onClick={handleContactClick}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  cursor: "pointer",
-                  padding: "4px 8px 4px 0",
-                  borderRadius: "8px",
-                  transition: "background 0.2s",
-                  minWidth: 0 // Flexbox içinde text taşmasını önler
+                  gap: 12,
+                  cursor: "pointer", // Tıklanabilir olduğu belli olsun
+                  padding: "5px 0",
+                  flex: 1, // ✅ BOYDAN BOYA KAPLAMASI İÇİN
+                  minWidth: 0, // Flex içinde text taşmasını önler
+                  // Hover rengi YOK, sadece pointer var.
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 {/* Profil Resmi */}
                 <div
                   style={{
-                    width: 40, height: 40,
+                    width: 42, height: 42,
                     borderRadius: "50%",
                     backgroundColor: "rgba(255,255,255,0.2)",
                     display: "flex", alignItems: "center", justifyContent: "center",
@@ -722,44 +721,35 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                     backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none",
                     backgroundSize: "cover", backgroundPosition: "center",
                     border: "1.5px solid rgba(255,255,255,0.6)",
-                    flexShrink: 0 // Resim büzüşmesin
+                    flexShrink: 0
                   }}
                 >
                   {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
                 </div>
 
                 {/* İsim ve Durum */}
-                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <div style={{ 
-                    fontWeight: 600, fontSize: 15, lineHeight: "1.2",
-                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" // Uzun isimler taşmasın
-                  }}>
+                <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                  <div style={{ fontWeight: 600, fontSize: 16, lineHeight: "1.2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {peer.name}
                   </div>
-                  <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 13, opacity: 0.95, lineHeight: "1.2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"}
                   </div>
                 </div>
               </div>
             ) : (
-              // Sohbet Seçili Değilse (Masaüstünde görünür sadece)
-              <strong style={{ fontSize: "18px", marginLeft: "10px" }}>Sohbet Seç</strong>
+              <strong style={{ fontSize: "18px", marginLeft: "5px" }}>Sohbet Seç</strong>
             )}
           </div>
 
-          {/* SAĞ TARAFTAKİ GRUP (Çıkış Butonu) */}
+          {/* SAĞ GRUP: Çıkış Butonu */}
           <button
             onClick={onLogout}
-            title="Çıkış Yap"
             style={{
               background: "rgba(255,255,255,0.15)",
-              border: "none",
-              color: "white",
-              padding: "8px 16px",
-              borderRadius: 20,
-              cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "13px",
+              border: "none", color: "white",
+              padding: "8px 16px", borderRadius: 20,
+              cursor: "pointer", fontWeight: 600, fontSize: "13px",
               marginLeft: "10px",
               flexShrink: 0
             }}

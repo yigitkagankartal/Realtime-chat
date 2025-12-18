@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import type { UserListItem } from "../api/chat";
 
 interface ContactInfoSidebarProps {
@@ -16,11 +16,17 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
   onViewImage,
   lastSeenText,
 }) => {
+  // Mobil Kontrolü
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (!user) return null;
 
-  // İsim Mantığı:
-  // Eğer displayName ile phoneNumber aynıysa, kullanıcı henüz isim belirlememiştir.
-  // Bu durumda sadece telefon numarasını göstermek yeterlidir.
   const isNameSet = user.displayName && user.displayName !== user.phoneNumber;
 
   return (
@@ -29,9 +35,10 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
         position: "fixed",
         top: 0,
         right: 0,
-        width: 350,
+        // ✅ GENİŞLİK AYARI (ProfileSidebar ile aynı)
+        width: isMobile ? "100%" : 330,
         height: "100%",
-        backgroundColor: "#F5F3FF", // Tema rengin
+        backgroundColor: "#F5F3FF",
         zIndex: 2000,
         transform: isOpen ? "translateX(0)" : "translateX(100%)",
         transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -74,23 +81,18 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
             {!user.profilePictureUrl && user.displayName.charAt(0).toUpperCase()}
           </div>
 
-          {/* ANA İSİM ALANI */}
           <div style={{ fontSize: 22, fontWeight: 700, color: "#3E3663", textAlign: "center", padding: "0 20px" }}>
             {isNameSet ? user.displayName : user.phoneNumber}
           </div>
 
-          {/* SİLİNEN KISIM: ~username alanı artık yok */}
-
-          {/* SON GÖRÜLME */}
           <div style={{ fontSize: 14, color: "#6F79FF", marginTop: 5 }}>
             {lastSeenText}
           </div>
         </div>
 
-        {/* BİLGİ KARTLARI */}
+        {/* BİLGİ KARTLARI (Yontulmuş Köşeli Tasarım) */}
         <div style={{ padding: "0 15px" }}>
             
-            {/* Eğer isim varsa, telefon numarasını ayrıca gösterelim */}
             {isNameSet && (
                 <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                     <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Telefon Numarası</div>
@@ -98,7 +100,6 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
                 </div>
             )}
 
-            {/* HAKKINDA */}
             <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                 <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Hakkında</div>
                 <div style={{ fontSize: 16, color: "#3E3663", lineHeight: 1.5 }}>
@@ -106,13 +107,11 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
                 </div>
             </div>
 
-            {/* MEDYA ALANI (Göstermelik) */}
             <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginTop: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: 16, color: "#3E3663" }}>Medya, bağlantı ve belgeler</div>
                 <div style={{ color: "#9B95C9" }}>0 ›</div>
             </div>
 
-            {/* AKSİYON BUTONLARI */}
             <div style={{ marginTop: 30 }}>
                 <button style={{ width: "100%", padding: "15px", textAlign: "left", background: "none", border: "none", color: "#FF4D4D", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
                     🚫 {isNameSet ? user.displayName : user.phoneNumber} kişisini engelle
@@ -121,7 +120,6 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
                     👎 {isNameSet ? user.displayName : user.phoneNumber} kişisini şikayet et
                 </button>
             </div>
-
         </div>
       </div>
     </div>

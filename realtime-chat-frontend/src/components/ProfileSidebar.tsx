@@ -18,7 +18,6 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   onUpdateMe,
   onViewImage,
 }) => {
-  // Form state'leri
   const [displayName, setDisplayName] = useState(me.displayName);
   const [about, setAbout] = useState(me.about || "");
   const [isEditingName, setIsEditingName] = useState(false);
@@ -26,7 +25,6 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isHoveringImage, setIsHoveringImage] = useState(false);
 
-  // Mobil Kontrolü
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -35,13 +33,11 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Props değişince local state'i güncelle
   useEffect(() => {
     setDisplayName(me.displayName);
     setAbout(me.about || "");
   }, [me]);
 
-  // Profil Güncelleme
   const handleSave = async (field: "name" | "about") => {
     try {
       const data: any = {};
@@ -62,7 +58,6 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
     }
   };
 
-  // Resim Yükleme
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -84,18 +79,13 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
         position: "fixed",
         top: 0,
         left: 0,
-        // ✅ GENİŞLİK AYARI:
-        // Eğer 300px'lik bir sol panel kullanıyorsan, paddinglerle birlikte 330px civarı yer kaplar.
-        // Burayı senin isteğine göre 330px'e sabitledim.
-        width: isMobile ? "100%" : 330, 
+        width: isMobile ? "100%" : 330,
         height: "100%",
-        backgroundColor: "#F0F2F5",
+        backgroundColor: "#F5F3FF", // ContactInfoSidebar ile aynı zemin
         zIndex: 2000,
-        // ✅ ANİMASYON MANTIĞI:
-        // shouldRender'ı kaldırdık. Artık panel hep var ama isOpen false ise -100% solda saklanıyor.
         transform: isOpen ? "translateX(0)" : "translateX(-100%)",
-        transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)", // ContactInfoSidebar ile aynı efekt
-        boxShadow: isOpen ? "2px 0 10px rgba(0,0,0,0.1)" : "none",
+        transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        boxShadow: "2px 0 10px rgba(0,0,0,0.1)",
         display: "flex",
         flexDirection: "column",
         borderRight: "1px solid #DDD6FF",
@@ -139,7 +129,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
         {/* FOTOĞRAF ALANI */}
         <div style={{ display: "flex", justifyContent: "center", padding: "28px 0" }}>
           <div 
-            style={{ position: "relative", width: 200, height: 200, cursor: "pointer" }}
+            style={{ position: "relative", width: 160, height: 160, cursor: "pointer" }}
             onMouseEnter={() => setIsHoveringImage(true)}
             onMouseLeave={() => setIsHoveringImage(false)}
           >
@@ -147,11 +137,12 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
               onClick={() => !isHoveringImage && me.profilePictureUrl && onViewImage(me.profilePictureUrl)}
               style={{
                 width: "100%", height: "100%", borderRadius: "50%",
-                backgroundColor: "#DDD6FF",
+                backgroundColor: "#E0D8FF",
                 backgroundImage: me.profilePictureUrl ? `url(${me.profilePictureUrl})` : "none",
                 backgroundSize: "cover", backgroundPosition: "center",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 60, color: "white",
+                fontSize: 50, color: "white",
+                boxShadow: "0 4px 15px rgba(0,0,0,0.1)"
               }}
             >
               {!me.profilePictureUrl && me.displayName.charAt(0).toUpperCase()}
@@ -169,75 +160,75 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
                     cursor: "pointer"
                   }}
                 >
-                    {isUploading ? <span>⌛ Yükleniyor...</span> : (
-                        <>
-                            <span style={{ fontSize: 24, marginBottom: 5 }}>📷</span>
-                            <span style={{ fontSize: 12, width: "70%", lineHeight: 1.2 }}>Profil resmini değiştir</span>
-                        </>
-                    )}
+                    {isUploading ? <span>⌛</span> : <span style={{ fontSize: 24 }}>📷</span>}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChange} />
                 </label>
             )}
           </div>
         </div>
 
-        {/* İSİM ALANI */}
-        <div style={{ padding: "14px 30px", backgroundColor: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-          <div style={{ fontSize: 13, color: "#6F79FF", marginBottom: 14 }}>Adınız</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            {isEditingName ? (
-              <div style={{ flex: 1, display: "flex", alignItems: "center", borderBottom: "2px solid #6F79FF" }}>
-                <input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  maxLength={25}
-                  style={{ width: "100%", border: "none", outline: "none", fontSize: 17, padding: "5px 0" }}
-                  autoFocus
-                />
-                <div style={{ fontSize: 12, color: "#ccc", marginLeft: 10 }}>{25 - displayName.length}</div>
-              </div>
-            ) : (
-              <div style={{ fontSize: 17, color: "#3b4a54", flex: 1 }}>{me.displayName}</div>
-            )}
-            <button 
-              onClick={() => isEditingName ? handleSave("name") : setIsEditingName(true)} 
-              style={{ background: "none", border: "none", fontSize: isEditingName ? 20 : 18, cursor: "pointer", color: isEditingName ? "#6F79FF" : "#9B95C9" }}
-            >
-              {isEditingName ? "✓" : "✎"}
-            </button>
-          </div>
-        </div>
+        {/* BİLGİ KARTLARI KAPSAYICISI (ContactInfoSidebar tarzı padding) */}
+        <div style={{ padding: "0 15px" }}>
 
-        {/* HAKKINDA ALANI */}
-        <div style={{ padding: "14px 30px", backgroundColor: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: 10 }}>
-          <div style={{ fontSize: 13, color: "#6F79FF", marginBottom: 14 }}>Hakkında</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            {isEditingAbout ? (
-              <div style={{ flex: 1, display: "flex", alignItems: "center", borderBottom: "2px solid #6F79FF" }}>
-                <input
-                  value={about}
-                  onChange={(e) => setAbout(e.target.value)}
-                  style={{ width: "100%", border: "none", outline: "none", fontSize: 17, padding: "5px 0" }}
-                  autoFocus
-                />
+            {/* İSİM KARTI */}
+            <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Adınız</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                {isEditingName ? (
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", borderBottom: "2px solid #6F79FF" }}>
+                    <input
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      maxLength={25}
+                      style={{ width: "100%", border: "none", outline: "none", fontSize: 16, padding: "5px 0", color: "#3E3663" }}
+                      autoFocus
+                    />
+                    <div style={{ fontSize: 12, color: "#ccc", marginLeft: 10 }}>{25 - displayName.length}</div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 16, color: "#3E3663", fontWeight: 500, flex: 1 }}>{me.displayName}</div>
+                )}
+                <button 
+                  onClick={() => isEditingName ? handleSave("name") : setIsEditingName(true)} 
+                  style={{ background: "none", border: "none", fontSize: isEditingName ? 20 : 18, cursor: "pointer", color: isEditingName ? "#6F79FF" : "#9B95C9", padding: 0 }}
+                >
+                  {isEditingName ? "✓" : "✎"}
+                </button>
               </div>
-            ) : (
-              <div style={{ fontSize: 17, color: "#3b4a54", flex: 1, whiteSpace: "pre-wrap" }}>{me.about || "Müsait"}</div>
-            )}
-            <button 
-              onClick={() => isEditingAbout ? handleSave("about") : setIsEditingAbout(true)} 
-              style={{ background: "none", border: "none", fontSize: isEditingAbout ? 20 : 18, cursor: "pointer", color: isEditingAbout ? "#6F79FF" : "#9B95C9" }}
-            >
-              {isEditingAbout ? "✓" : "✎"}
-            </button>
-          </div>
-        </div>
+            </div>
 
-         {/* TELEFON NUMARASI */}
-         <div style={{ padding: "14px 30px", backgroundColor: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-             <div style={{ fontSize: 13, color: "#6F79FF", marginBottom: 5 }}>Telefon Numarası</div>
-             <div style={{ fontSize: 17, color: "#3b4a54" }}>{me.phoneNumber}</div>
-         </div>
+            {/* HAKKINDA KARTI */}
+            <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Hakkında</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                {isEditingAbout ? (
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", borderBottom: "2px solid #6F79FF" }}>
+                    <input
+                      value={about}
+                      onChange={(e) => setAbout(e.target.value)}
+                      style={{ width: "100%", border: "none", outline: "none", fontSize: 16, padding: "5px 0", color: "#3E3663" }}
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 16, color: "#3E3663", flex: 1, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{me.about || "Müsait"}</div>
+                )}
+                <button 
+                  onClick={() => isEditingAbout ? handleSave("about") : setIsEditingAbout(true)} 
+                  style={{ background: "none", border: "none", fontSize: isEditingAbout ? 20 : 18, cursor: "pointer", color: isEditingAbout ? "#6F79FF" : "#9B95C9", padding: 0 }}
+                >
+                  {isEditingAbout ? "✓" : "✎"}
+                </button>
+              </div>
+            </div>
+
+             {/* TELEFON NUMARASI KARTI */}
+             <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                 <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Telefon Numarası</div>
+                 <div style={{ fontSize: 16, color: "#3E3663" }}>{me.phoneNumber}</div>
+             </div>
+
+        </div>
       </div>
     </div>
   );
