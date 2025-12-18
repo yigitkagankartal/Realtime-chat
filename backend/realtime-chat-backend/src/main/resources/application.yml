@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto:
     show-sql: true
     properties:
       hibernate:
@@ -31,3 +31,7 @@ cloudinary:
   cloud-name: dh9gwpfor
   api-key: 829472641856166
   api-secret: c0HMPnv-kHhsIZDeYUEqQDn99w8
+
+app:
+  activation:
+    master-key: ${CHAT_MASTER_KEY}

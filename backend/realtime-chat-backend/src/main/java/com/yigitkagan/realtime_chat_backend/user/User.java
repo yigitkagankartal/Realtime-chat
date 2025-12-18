@@ -11,6 +11,9 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private boolean isActivated = false;
+
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -60,4 +63,6 @@ public class User {
 
     public String getAbout() { return about; }
     public void setAbout(String about) { this.about = about; }
+    public boolean isActivated() { return isActivated; }
+    public void setActivated(boolean activated) { isActivated = activated; }
 }

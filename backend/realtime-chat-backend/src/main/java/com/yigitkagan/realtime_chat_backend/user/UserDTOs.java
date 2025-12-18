@@ -8,7 +8,8 @@ public class UserDTOs {
             String phoneNumber,
             String displayName,
             String profilePictureUrl,
-            String about
+            String about,
+            boolean isActivated
     ) {}
 
     // Profil güncelleme isteği için DTO

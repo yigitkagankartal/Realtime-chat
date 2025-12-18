@@ -1,14 +1,13 @@
-// src/App.tsx
 import { useEffect, useState } from "react";
 import ChatLayout from "./components/ChatLayout";
 import LoginForm from "./components/LoginForm";
+import ActivationGate from "./components/ActivationGate"; // ✅ YENİ BİLEŞEN
 import { fetchMe, logout } from "./api/auth";
 import type { MeResponse } from "./api/auth";
 
 const App: React.FC = () => {
   const [me, setMe] = useState<MeResponse | null | undefined>(undefined);
 
-  // Uygulama açıldığında mevcut kullanıcıyı kontrol et
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -39,15 +38,31 @@ const App: React.FC = () => {
     setMe(null);
   };
 
+  // Kilit ekranında başarılı giriş yapınca burası çalışır
+  const handleActivationSuccess = (updatedUser: MeResponse) => {
+    setMe(updatedUser);
+  };
+
   if (me === undefined) {
-    return <div>Yükleniyor...</div>;
+    return <div style={{height: "100vh", background: "#1e1e2e", color:"white", display:"flex", alignItems:"center", justifyContent:"center"}}>Yükleniyor...</div>;
   }
 
   if (me === null) {
     return <LoginForm onLogin={handleLogin} />;
   }
 
-  // Giriş yapmış kullanıcı → direkt ChatLayout
+  // ✅ KONTROL: Aktif değilse Kapı Ekranına git
+  if (!me.isActivated) {
+    return (
+      <ActivationGate 
+        me={me} 
+        onSuccess={handleActivationSuccess} 
+        onLogout={handleLogout} 
+      />
+    );
+  }
+
+  // ✅ Aktifse Sohbete git
   return (
     <ChatLayout
       me={me}

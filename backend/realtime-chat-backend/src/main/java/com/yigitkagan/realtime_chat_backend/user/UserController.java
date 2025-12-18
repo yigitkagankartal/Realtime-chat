@@ -4,7 +4,6 @@ import com.yigitkagan.realtime_chat_backend.file.FileService;
 import com.yigitkagan.realtime_chat_backend.presence.PresenceService;
 import com.yigitkagan.realtime_chat_backend.user.UserDTOs.UserListItem;
 import com.yigitkagan.realtime_chat_backend.user.UserDTOs.UserMeResponse;
-// DİKKAT: Aşağıdaki satır UserDTOs içindekini DEĞİL, harici dosyayı işaret ediyor. Doğrusu bu:
 import com.yigitkagan.realtime_chat_backend.user.UpdateProfileRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -49,36 +48,36 @@ public class UserController {
                 user.getPhoneNumber(),
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
-                user.getAbout()
+                user.getAbout(),
+                user.isActivated()
         ));
     }
 
-    // Tüm kullanıcıları listele
+    // ✅ DÜZELTİLDİ: Parametre sırası UserDTOs ile birebir aynı yapıldı.
     @GetMapping
-    public List<UserListItem> listUsers() {
-        return userRepository.findAll()
+    public List<UserListItem> listUsers(Authentication authentication) {
+        String currentEmail = (String) authentication.getPrincipal();
+
+        return userRepository.findAllByIsActivatedTrue()
                 .stream()
+                .filter(u -> !u.getEmail().equals(currentEmail))
                 .map(u -> new UserListItem(
-                        u.getId(),
-                        u.getEmail(),
-                        u.getDisplayName(),
-                        u.getProfilePictureUrl(),
-                        u.getAbout(),
-                        u.getPhoneNumber()
+                        u.getId(),               // 1. Long id
+                        u.getEmail(),            // 2. String email
+                        u.getDisplayName(),      // 3. String displayName
+                        u.getProfilePictureUrl(),// 4. String profilePictureUrl
+                        u.getAbout(),            // 5. String about
+                        u.getPhoneNumber()       // 6. String phoneNumber
                 ))
                 .toList();
     }
 
-    // Profil güncelleme (Display Name & About)
+    // Profil güncelleme
     @PutMapping("/me")
     public UserMeResponse updateProfile(
             @RequestBody UpdateProfileRequest request,
             Authentication authentication
     ) {
-        // Kontrol Logları
-        System.out.println("Update İsteği Geldi: " + request);
-        System.out.println("Gelen About Verisi: " + request.getAbout());
-
         String email = (String) authentication.getPrincipal();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -87,7 +86,6 @@ public class UserController {
             user.setDisplayName(request.getDisplayName());
         }
 
-        // KRİTİK NOKTA: About verisini set ediyoruz
         if (request.getAbout() != null) {
             user.setAbout(request.getAbout());
         }
@@ -104,7 +102,8 @@ public class UserController {
                 user.getPhoneNumber(),
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
-                user.getAbout()
+                user.getAbout(),
+                user.isActivated()
         );
     }
 
@@ -120,7 +119,8 @@ public class UserController {
                 user.getPhoneNumber(),
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
-                user.getAbout()
+                user.getAbout(),
+                user.isActivated()
         );
     }
 

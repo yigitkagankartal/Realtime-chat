@@ -13,6 +13,11 @@ public class ActivationAuthDtos {
             String phoneNumber,
             String token,
             String profilePictureUrl,
-            String about
+            String about,
+            boolean isActivated
+    ) {}
+    public record VerifyActivationRequest(
+            String phoneNumber,
+            String masterKey // Kullanıcının girmesi gereken GİZLİ ŞİFRE
     ) {}
 }
