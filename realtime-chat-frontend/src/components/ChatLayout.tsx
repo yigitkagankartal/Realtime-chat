@@ -119,6 +119,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [contactSidebarOpen, setContactSidebarOpen] = useState(false);
   const [contactInfo, setContactInfo] = useState<UserListItem | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   // Her konuşmanın mesajlarını cachelemek için (sol listede son mesaj & unread için)
   const [messageCache, setMessageCache] = useState<
     Record<number, ChatMessageResponse[]>
@@ -384,6 +385,13 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       setShowSetupModal(true);
     }
   }, [me]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   // Sidebar'dan gelen güncellemeyi işle
   const handleUpdateMe = (updated: MeResponse) => {
     setCurrentUser(updated);
@@ -523,13 +531,13 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       {/* SOL PANEL */}
       <div
         style={{
-          width: 300,
-          borderRight: "1px solid #DDD6FF",
+          width: isMobile ? "100%" : 300, // Mobilde tam ekran, masaüstünde 350px
+          display: isMobile && selectedConversation ? "none" : "flex", // Mobilde sohbet açıksa gizle
+          borderRight: isMobile ? "none" : "1px solid #DDD6FF", // Mobilde çizgiye gerek yok
           backgroundColor: "#F5F3FF",
           padding: "12px 14px",
-          overflowY: "auto",
-          display: "flex",
           flexDirection: "column",
+          overflowY: "auto", // Scroll olsun
         }}
       >
         {/* SOL PANEL HEADER (Profil Resmi & Tıklama Alanı) */}
@@ -639,75 +647,107 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         </ul>
       </div>
 
-      {/* SAĞ PANEL */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)" }}>
-
-        {/* ÜST BAR (Sağ Panel Header) */}
+      {/* SAĞ PANEL (Bu div'i bul ve style kısmını güncelle) */}
+      <div
+        style={{
+          flex: 1,
+          display: isMobile && !selectedConversation ? "none" : "flex", // Mobilde sohbet yoksa gizle
+          flexDirection: "column",
+          background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)",
+          height: "100vh" // Yüksekliği garantiye al
+        }}
+      >
+        {/* ÜST BAR (Sağ Panel Header) - TAMAMEN BU BLOĞU YAPIŞTIR */}
         <div
           style={{
             height: "65px",
             background: "linear-gradient(90deg, #6F79FF, #9B8CFF)",
             color: "white",
-            padding: "0 20px",
+            padding: "0 10px", // Mobilde kenarlara yapışmasın diye padding
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             flexShrink: 0,
+            boxShadow: "0 2px 5px rgba(0,0,0,0.1)" // Hafif gölge ekledim, şık durur
           }}
         >
-          {/* SOL: KULLANICI + ÇEVRİMİÇİ */}
-          {peer ? (
-            <div
-              // TIKLAMA SADECE KULLANICI VARSA AKTİF
-              onClick={handleContactClick}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                cursor: "pointer", // El işareti sadece burada çıkar
-                padding: "5px 10px 5px 0",
-                borderRadius: "8px",
-                transition: "background 0.2s"
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)"}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-            >
-              {/* Sohbet ettiğin kişinin resmi */}
-              <div style={{
-                width: 40, height: 40,
-                borderRadius: "50%",
-                backgroundColor: "rgba(255,255,255,0.2)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "white", fontWeight: "bold", fontSize: "16px",
-                backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none",
-                backgroundSize: "cover", backgroundPosition: "center",
-                border: "1.5px solid rgba(255,255,255,0.6)"
-              }}>
-                {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
-              </div>
+          {/* SOL TARAFTAKİ GRUP (Geri Butonu + Profil Bilgisi) */}
+          <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+            
+            {/* 1. GERİ BUTONU (Sadece Mobilde Görünür) */}
+            {isMobile && (
+              <button
+                onClick={() => setSelectedConversation(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "white",
+                  fontSize: "28px", // Biraz büyüttüm kolay basılsın
+                  cursor: "pointer",
+                  marginRight: "4px",
+                  padding: "0 8px",
+                  lineHeight: "1",
+                  display: "flex", alignItems: "center"
+                }}
+              >
+                ‹
+              </button>
+            )}
 
-              {/* İsim ve Durum Bilgisi */}
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ fontWeight: 600, fontSize: 15, lineHeight: "1.2" }}>{peer.name}</div>
-                <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2", transition: "color 0.3s" }}>
-                  {/* Eğer peer (konuştuğun kişi) şu an yazıyorsa */}
-                  {typingUserId === peer.id ? (
-                    <span style={{ fontStyle: "italic", fontWeight: "600" }}>
-                      Yazıyor...
-                    </span>
-                  ) : (
-                    // Yazmıyorsa normal durumu göster
-                    isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"
-                  )}
+            {/* 2. KULLANICI BİLGİSİ (Peer Info) */}
+            {peer ? (
+              <div
+                onClick={handleContactClick}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                  padding: "4px 8px 4px 0",
+                  borderRadius: "8px",
+                  transition: "background 0.2s",
+                  minWidth: 0 // Flexbox içinde text taşmasını önler
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                {/* Profil Resmi */}
+                <div
+                  style={{
+                    width: 40, height: 40,
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(255,255,255,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "white", fontWeight: "bold", fontSize: "16px",
+                    backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none",
+                    backgroundSize: "cover", backgroundPosition: "center",
+                    border: "1.5px solid rgba(255,255,255,0.6)",
+                    flexShrink: 0 // Resim büzüşmesin
+                  }}
+                >
+                  {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
+                </div>
+
+                {/* İsim ve Durum */}
+                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                  <div style={{ 
+                    fontWeight: 600, fontSize: 15, lineHeight: "1.2",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" // Uzun isimler taşmasın
+                  }}>
+                    {peer.name}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.9, lineHeight: "1.2", whiteSpace: "nowrap" }}>
+                    {isPeerOnline ? "Çevrimiçi" : lastSeenText ?? "Son görülme yakınlarda"}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            // KULLANICI SEÇİLİ DEĞİLSE SADECE YAZI (Tıklanamaz)
-            <strong style={{ fontSize: "18px", marginLeft: "10px" }}>Sohbet Seç</strong>
-          )}
+            ) : (
+              // Sohbet Seçili Değilse (Masaüstünde görünür sadece)
+              <strong style={{ fontSize: "18px", marginLeft: "10px" }}>Sohbet Seç</strong>
+            )}
+          </div>
 
-          {/* 🚪 SAĞ: ÇIKIŞ */}
+          {/* SAĞ TARAFTAKİ GRUP (Çıkış Butonu) */}
           <button
             onClick={onLogout}
             title="Çıkış Yap"
@@ -719,6 +759,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               borderRadius: 20,
               cursor: "pointer",
               fontWeight: 600,
+              fontSize: "13px",
+              marginLeft: "10px",
+              flexShrink: 0
             }}
           >
             Çıkış
@@ -773,51 +816,51 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               })}
 
             {/* ✅ YENİ EKLENECEK KISIM: YAZIYOR BALONCUĞU */}
-          <div
-            style={{
-              // Görünürken alt padding var, gizlenirken padding yok (yer kaplamasın diye)
-              padding: typingUserId === peer?.id ? "0 24px 16px 24px" : "0 24px 0 24px",
-              
-              // Yazıyorsa görünür (opacity 1), yoksa gizli (opacity 0)
-              opacity: typingUserId === peer?.id ? 1 : 0,
-              
-              // Yazıyorsa olduğu yerde, yoksa 10px aşağıda dursun (yukarı kayma efekti)
-              transform: typingUserId === peer?.id ? "translateY(0)" : "translateY(10px)",
-              
-              // ⚠️ ÖNEMLİ DÜZELTME: max-height ve padding geçişlerini de ekliyoruz
-              // Bu sayede aniden değil, yumuşak bir şekilde küçülerek ve solarak kaybolacak
-              transition: "opacity 0.5s ease-in-out, transform 0.5s ease-in-out, max-height 0.5s ease-in-out, padding 0.5s ease-in-out",
-              
-              // Görünmezken tıklamayı engelle
-              pointerEvents: typingUserId === peer?.id ? "auto" : "none",
-              
-              // Görünmezken yer kaplamasın (akışı bozmasın)
-              // height yerine max-height kullanıyoruz ve animasyonluyoruz
-              maxHeight: typingUserId === peer?.id ? 60 : 0, // Baloncuğun yüksekliğine göre bir değer
-              
-              overflow: "hidden" 
-            }}
-          >
-            <div style={{
-              backgroundColor: "#FFFFFF", // Karşı taraf mesaj rengi
-              padding: "10px 14px",       // Biraz daha kompakt
-              borderRadius: 16,
-              borderTopLeftRadius: 0,     // Sol üst köşe sivri
-              display: "inline-flex",
-              alignItems: "center",
-              boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
-              width: "fit-content",
-              minHeight: 36
-            }}>
-              {/* Üç Nokta Animasyonu */}
-              <div className="typing-dot"></div>
-              <div className="typing-dot"></div>
-              <div className="typing-dot"></div>
-            </div>
-          </div>
+            <div
+              style={{
+                // Görünürken alt padding var, gizlenirken padding yok (yer kaplamasın diye)
+                padding: typingUserId === peer?.id ? "0 24px 16px 24px" : "0 24px 0 24px",
 
-          <div ref={messagesEndRef} />
-        </div>
+                // Yazıyorsa görünür (opacity 1), yoksa gizli (opacity 0)
+                opacity: typingUserId === peer?.id ? 1 : 0,
+
+                // Yazıyorsa olduğu yerde, yoksa 10px aşağıda dursun (yukarı kayma efekti)
+                transform: typingUserId === peer?.id ? "translateY(0)" : "translateY(10px)",
+
+                // ⚠️ ÖNEMLİ DÜZELTME: max-height ve padding geçişlerini de ekliyoruz
+                // Bu sayede aniden değil, yumuşak bir şekilde küçülerek ve solarak kaybolacak
+                transition: "opacity 0.5s ease-in-out, transform 0.5s ease-in-out, max-height 0.5s ease-in-out, padding 0.5s ease-in-out",
+
+                // Görünmezken tıklamayı engelle
+                pointerEvents: typingUserId === peer?.id ? "auto" : "none",
+
+                // Görünmezken yer kaplamasın (akışı bozmasın)
+                // height yerine max-height kullanıyoruz ve animasyonluyoruz
+                maxHeight: typingUserId === peer?.id ? 60 : 0, // Baloncuğun yüksekliğine göre bir değer
+
+                overflow: "hidden"
+              }}
+            >
+              <div style={{
+                backgroundColor: "#FFFFFF", // Karşı taraf mesaj rengi
+                padding: "10px 14px",       // Biraz daha kompakt
+                borderRadius: 16,
+                borderTopLeftRadius: 0,     // Sol üst köşe sivri
+                display: "inline-flex",
+                alignItems: "center",
+                boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                width: "fit-content",
+                minHeight: 36
+              }}>
+                {/* Üç Nokta Animasyonu */}
+                <div className="typing-dot"></div>
+                <div className="typing-dot"></div>
+                <div className="typing-dot"></div>
+              </div>
+            </div>
+
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
         {/* INPUT */}
