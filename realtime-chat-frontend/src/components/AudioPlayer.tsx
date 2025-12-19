@@ -25,6 +25,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
   useEffect(() => {
     if (!containerRef.current) return;
 
+
+    // ✅ 1. ADIM: URL'i Güvenli Yap (HTTP -> HTTPS)
+    // Cloudinary bazen http linki döner, bunu https'e çevirmezsek live'da çalışmaz.
+    const secureUrl = audioUrl.startsWith("http://") 
+      ? audioUrl.replace("http://", "https://") 
+      : audioUrl;
     // Renk Ayarları (Vivoria Teması)
     // isMine (Mor Zemin) -> Dalgalar Beyaz
     // !isMine (Beyaz Zemin) -> Dalgalar Gri/Mor
@@ -41,9 +47,17 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
       barRadius: 3,
       height: 28, // Yükseklik azaltıldı (Daha kompakt)
       normalize: true,
+      backend: 'WebAudio'
     });
 
-    waveSurferRef.current.load(audioUrl);
+   // ✅ 3. ADIM: Yüklerken fetch modunu belirt
+    // HTML5 Audio elementleri cross-origin sorunları yaratabilir, 
+    // load metoduna direkt url veriyoruz ama fetch işlemi wavesurfer tarafından yapılıyor.
+    try {
+        waveSurferRef.current.load(secureUrl);
+    } catch (error) {
+        console.error("Ses yükleme hatası:", error);
+    }
 
     waveSurferRef.current.on("ready", () => {
       setDuration(waveSurferRef.current?.getDuration() || 0);
@@ -57,6 +71,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
       setIsPlaying(false);
       waveSurferRef.current?.seekTo(0);
       setCurrentTime(0);
+    });
+
+    // Hata ayıklama için (Live'da konsolu açıp bakabilirsin)
+    waveSurferRef.current.on("error", (e) => {
+        console.error("WaveSurfer Hatası:", e);
     });
 
     return () => {
