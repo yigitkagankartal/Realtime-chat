@@ -6,6 +6,7 @@ export interface UserListItem {
   profilePictureUrl?: string;
   about?: string;
   phoneNumber: string;
+  lastSeen?: string;
 }
 
 export interface ConversationResponse {

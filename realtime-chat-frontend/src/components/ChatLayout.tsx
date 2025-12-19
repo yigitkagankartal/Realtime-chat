@@ -145,6 +145,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const documentInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const onlineIds = useOnlineUsers(me.id);
+  const prevOnlineIdsRef = useRef<number[]>([]);
 
   // ✅ DOSYA ÖNİZLEME STATE'LERİ
   const [selectedFile, setSelectedFile] = useState<{
@@ -193,6 +194,28 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     handleIncomingMessage,
     handleTyping
   );
+
+  // ✅ YENİ EKLENECEK KISIM: Kullanıcı Offline Olduğunda "Last Seen" Güncelle
+  useEffect(() => {
+    const prevIds = prevOnlineIdsRef.current;
+    
+    // Kimin çıktığını bul (Önceki listede var ama şimdikinde yoksa çıkmıştır)
+    const disconnectedUserIds = prevIds.filter(id => !onlineIds.includes(id));
+
+    if (disconnectedUserIds.length > 0) {
+      setUsers(prevUsers => prevUsers.map(user => {
+        if (disconnectedUserIds.includes(user.id)) {
+          // Kullanıcıyı bulduk, lastSeen değerini "Şimdi" yapıyoruz
+          // Not: Backend'den gelen UserListItem içinde 'lastSeen' alanı olduğunu varsayıyorum.
+          // Eğer yoksa bunu UserListItem interface'ine eklemelisin.
+          return { ...user, lastSeen: new Date().toISOString() };
+        }
+        return user;
+      }));
+    }
+    // Ref'i güncelle
+    prevOnlineIdsRef.current = onlineIds;
+  }, [onlineIds]);
 
   // --- Initial Data Load ---
   useEffect(() => {
@@ -489,11 +512,21 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
   const isPeerOnline = peer ? onlineIds.includes(peer.id) : false;
   let lastSeenText: string | null = null;
+  
   if (peer) {
-    const peerMessages = messages.filter((m) => m.senderId === peer.id);
-    if (peerMessages.length > 0) {
-      const latest = peerMessages[peerMessages.length - 1];
-      lastSeenText = "Son görülme " + formatTime(latest.createdAt);
+    // Peer objesini users state'inden bulalım (Çünkü güncel lastSeen orada)
+    const currentPeerUser = users.find(u => u.id === peer.id);
+
+    if (currentPeerUser && currentPeerUser.lastSeen) {
+       // Eğer kullanıcının lastSeen verisi varsa onu kullan (Daha doğru olan bu)
+       lastSeenText = "Son görülme " + formatTime(currentPeerUser.lastSeen);
+    } else {
+       // Yoksa (eski usul) son mesaja bak
+       const peerMessages = messages.filter((m) => m.senderId === peer.id);
+       if (peerMessages.length > 0) {
+         const latest = peerMessages[peerMessages.length - 1];
+         lastSeenText = "Son görülme " + formatTime(latest.createdAt);
+       }
     }
   }
 
