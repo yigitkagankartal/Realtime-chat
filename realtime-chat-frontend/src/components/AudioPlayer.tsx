@@ -25,19 +25,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
   useEffect(() => {
     if (!containerRef.current) return;
 
-
-    // ✅ 1. ADIM: URL'i Güvenli Yap (HTTP -> HTTPS)
-    // Cloudinary bazen http linki döner, bunu https'e çevirmezsek live'da çalışmaz.
+    // 1. URL Güvenliği
     const secureUrl = audioUrl.startsWith("http://") 
       ? audioUrl.replace("http://", "https://") 
       : audioUrl;
-    // Renk Ayarları (Vivoria Teması)
-    // isMine (Mor Zemin) -> Dalgalar Beyaz
-    // !isMine (Beyaz Zemin) -> Dalgalar Gri/Mor
+
     const waveColor = isMine ? "#ffffffaf" : "#BDBDBD"; 
     const progressColor = isMine ? "#f5f5f5dc" : "#6F79FF"; 
 
-    waveSurferRef.current = WaveSurfer.create({
+    // WaveSurfer Oluştur
+    const ws = WaveSurfer.create({
       container: containerRef.current,
       waveColor: waveColor,
       progressColor: progressColor,
@@ -45,48 +42,60 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
       barWidth: 3,
       barGap: 2,
       barRadius: 3,
-      height: 28, // Yükseklik azaltıldı (Daha kompakt)
+      height: 28,
       normalize: true,
-      backend: 'WebAudio'
+      backend: 'WebAudio', // CORS sorunları için gerekli
     });
 
-   // ✅ 3. ADIM: Yüklerken fetch modunu belirt
-    // HTML5 Audio elementleri cross-origin sorunları yaratabilir, 
-    // load metoduna direkt url veriyoruz ama fetch işlemi wavesurfer tarafından yapılıyor.
+    waveSurferRef.current = ws;
+
+    // 2. Sesi Yükle
     try {
-        waveSurferRef.current.load(secureUrl);
+        ws.load(secureUrl);
     } catch (error) {
         console.error("Ses yükleme hatası:", error);
     }
 
-    waveSurferRef.current.on("ready", () => {
-      setDuration(waveSurferRef.current?.getDuration() || 0);
+    // --- EVENT LISTENERS (DÜZELTİLEN KISIM) ---
+
+    // Hazır olduğunda süreyi al
+    ws.on("ready", () => {
+      setDuration(ws.getDuration());
     });
 
-    waveSurferRef.current.on("audioprocess", () => {
-      setCurrentTime(waveSurferRef.current?.getCurrentTime() || 0);
+    // Oynarken süreyi güncelle
+    ws.on("audioprocess", () => {
+      setCurrentTime(ws.getCurrentTime());
     });
 
-    waveSurferRef.current.on("finish", () => {
+    // ✅ Oynatma başladığında ikonu güncelle
+    ws.on("play", () => setIsPlaying(true));
+
+    // ✅ Duraklatıldığında ikonu güncelle
+    ws.on("pause", () => setIsPlaying(false));
+
+    // ✅ Ses bittiğinde her şeyi sıfırla
+    ws.on("finish", () => {
       setIsPlaying(false);
-      waveSurferRef.current?.seekTo(0);
       setCurrentTime(0);
+      ws.seekTo(0); // Başa sar
     });
 
-    // Hata ayıklama için (Live'da konsolu açıp bakabilirsin)
-    waveSurferRef.current.on("error", (e) => {
+    ws.on("error", (e) => {
         console.error("WaveSurfer Hatası:", e);
     });
 
+    // Temizlik
     return () => {
-      waveSurferRef.current?.destroy();
+      ws.destroy();
     };
   }, [audioUrl, isMine]);
 
+  // ✅ Toggle fonksiyonu artık sadece komut gönderiyor, state değiştirmiyor.
+  // State değişimi yukarıdaki "play" ve "pause" eventleri ile oluyor.
   const togglePlay = () => {
     if (waveSurferRef.current) {
       waveSurferRef.current.playPause();
-      setIsPlaying(!isPlaying);
     }
   };
 
