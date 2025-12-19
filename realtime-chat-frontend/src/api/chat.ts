@@ -90,3 +90,23 @@ export const uploadAudio = async (audioBlob: Blob): Promise<string> => {
   });
   return res.data.url;
 };
+
+export const uploadMedia = async (file: File | Blob): Promise<string> => {
+  const formData = new FormData();
+  
+  // Eğer dosya Blob ise (Kameradan gelen gibi) isim vermemiz gerekir.
+  // File tipindeyse (Input'tan gelen) kendi ismi vardır.
+  if (file instanceof File) {
+    formData.append("file", file);
+  } else {
+    // Blob için varsayılan bir isim uyduruyoruz
+    formData.append("file", file, `camera_capture_${Date.now()}.jpg`);
+  }
+
+  // Mevcut 'api' instance'ını kullanıyoruz (BaseURL ve Token ayarları otomatik gelir)
+  const res = await api.post<{ url: string }>("/api/files/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  
+  return res.data.url;
+};

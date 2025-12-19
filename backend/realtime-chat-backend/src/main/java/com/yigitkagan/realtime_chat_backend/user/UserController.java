@@ -38,7 +38,16 @@ public class UserController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String imageUrl = fileService.uploadImage(file);
+        String imageUrl;
+
+        try {
+            // HATA VEREN KISIM BURASIYDI, try-catch içine aldık.
+            imageUrl = fileService.uploadFile(file);
+        } catch (java.io.IOException e) {
+            // Eğer Cloudinary'ye yüklerken hata olursa 500 hatası fırlat
+            throw new RuntimeException("Resim yüklenirken hata oluştu: " + e.getMessage());
+        }
+
         user.setProfilePictureUrl(imageUrl);
         userRepository.save(user);
 
@@ -53,7 +62,6 @@ public class UserController {
         ));
     }
 
-    // ✅ DÜZELTİLDİ: Parametre sırası UserDTOs ile birebir aynı yapıldı.
     @GetMapping
     public List<UserListItem> listUsers(Authentication authentication) {
         String currentEmail = (String) authentication.getPrincipal();
@@ -62,12 +70,12 @@ public class UserController {
                 .stream()
                 .filter(u -> !u.getEmail().equals(currentEmail))
                 .map(u -> new UserListItem(
-                        u.getId(),               // 1. Long id
-                        u.getEmail(),            // 2. String email
-                        u.getDisplayName(),      // 3. String displayName
-                        u.getProfilePictureUrl(),// 4. String profilePictureUrl
-                        u.getAbout(),            // 5. String about
-                        u.getPhoneNumber()       // 6. String phoneNumber
+                        u.getId(),
+                        u.getEmail(),
+                        u.getDisplayName(),
+                        u.getProfilePictureUrl(),
+                        u.getAbout(),
+                        u.getPhoneNumber()
                 ))
                 .toList();
     }
