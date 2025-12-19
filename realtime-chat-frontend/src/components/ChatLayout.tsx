@@ -25,17 +25,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPaperPlane, faMicrophone, faTrash, faCheck, faPlus,
   faFileAlt, faImages, faCamera, faUser, faChartBar, faCalendarAlt, faStickyNote,
-  faTimes, faDownload, faFilePdf, faSpinner
+  faTimes, faDownload, faFilePdf, faSpinner, faSmile
 } from "@fortawesome/free-solid-svg-icons";
 import AudioPlayer from "./AudioPlayer";
 import { compressImage } from "../utils/imageUtils";
+import EmojiPicker, { EmojiStyle, Theme } from 'emoji-picker-react';
 
 interface ChatLayoutProps {
   me: MeResponse;
   onLogout: () => void;
 }
 
-// ✅ CSS: Animasyon Kodları
+// ✅ CSS: Animasyonlar ve Referans Tasarıma Uygun Emoji Picker Stilleri
 const styles = `
   @keyframes bounce {
     0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
@@ -49,8 +50,85 @@ const styles = `
   .typing-dot:nth-child(2) { animation-delay: -0.16s; }
   
   @keyframes popupMenuEnter {
-    0% { opacity: 0; transform: scale(0.6) translateY(20px); }
+    0% { opacity: 0; transform: scale(0.8) translateY(20px); }
     100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* --- EMOJI PICKER STİLLERİ (Referans Tasarıma Göre) --- */
+
+  /* 1. Ana Kutu (Referans görseldeki gibi geniş, yuvarlak, gölgeli) */
+  .EmojiPickerReact.epr-main {
+      border: none !important; /* Kendi çerçevesini kaldır */
+      border-radius: 24px !important; /* Referanstaki gibi daha yuvarlak köşe */
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12) !important; /* Yumuşak gölge */
+      font-family: 'Segoe UI', sans-serif !important; /* Yazı tipini eşle */
+      --epr-picker-border-radius: 24px !important; /* Değişkenleri de güncelle */
+  }
+  
+  /* 🔥 İŞTE ÇÖZÜM BURASI: O YUVARLAĞI SİLEN KODLAR */
+  .EmojiPickerReact button:focus, .EmojiPickerReact button:active, .EmojiPickerReact .epr-btn:focus {
+      outline: none !important;
+      box-shadow: none !important;
+      background-color: transparent !important; /* Arkaplanı şeffaf yap */
+      border: none !important;
+  }
+
+  /* 3. Kategori Butonları (Kopukluğu düzeltir ve hizalar) - TALEBİN */
+  .EmojiPickerReact .epr-category-nav {
+      display: flex !important;
+      justify-content: space-between !important; /* İkonları eşit yay */
+      padding: 0px 15px 0 15px !important; /* Üstten biraz boşluk */
+      overflow-x: hidden !important; /* Taşmayı engelle */
+      width: 100% !important;
+      box-sizing: border-box !important;
+  }
+  .EmojiPickerReact .epr-category-nav > button.epr-btn {
+      flex: 1 !important; /* Hepsi eşit genişlikte olsun */
+      min-width: unset !important;
+      padding: 8px 0 !important; /* Dikeyde biraz boşluk */
+      margin: 0 !important;
+      width: auto !important;
+      opacity: 0.6; /* Pasifken biraz soluk dursun */
+      transition: opacity 0.2s;
+  }
+  .EmojiPickerReact .epr-category-nav > button.epr-btn:hover,
+  .EmojiPickerReact .epr-category-nav > button.epr-btn.epr-active {
+      opacity: 1; /* Aktifken veya üzerine gelince parlak olsun */
+  }
+  .EmojiPickerReact .epr-category-nav > button.epr-btn > span { display: flex; justify-content: center; }
+
+  /* 4. Arama Çubuğu (Modern ve şık) */
+  .EmojiPickerReact .epr-search-container {
+      padding: 5px !important; /* Kenar boşlukları */
+  }
+  .EmojiPickerReact .epr-search-container input {
+      border-radius: 20px !important; /* Yuvarlak input */
+      background-color: #F5F3FF !important; /* Temana uygun açık renk */
+      border: 1px solid #EAE6FF !important; /* Hafif çerçeve */
+      height: 40px !important;
+      padding-left: 40px !important; /* İkon için yer */
+      font-size: 15px !important;
+  }
+  /* Arama ikonu */
+  .EmojiPickerReact .epr-search-container .epr-icn-search {
+      left: 25px !important; /* İkonu biraz içeri al */
+      color: #9B95C9 !important;
+  }
+
+  /* 5. Emoji Listesi ve Başlıklar */
+  .EmojiPickerReact .epr-body {
+      padding: 0 10px !important; /* Kenarlardan biraz içeride olsun */
+  }
+  .EmojiPickerReact .epr-category-heading {
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      color: #9B95C9 !important; /* Başlık rengi */
+      padding: 10px 5px !important;
+  }
+
+  /* 6. "Preview" (önizleme) barını gizle */
+  .EmojiPickerReact .epr-preview {
+      display: none !important; 
   }
 `;
 
@@ -156,6 +234,17 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const [fileCaption, setFileCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
+  // --- Emoji Picker State ---
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Emoji seçildiğinde çalışacak fonksiyon
+  const onEmojiClick = (emojiData: any) => {
+    // Mevcut mesajın sonuna emojiyi ekle
+    setNewMessage((prev) => prev + emojiData.emoji);
+    // İstersen seçimden sonra kapatabilirsin, ama genelde açık kalması istenir
+    // setShowEmojiPicker(false); 
+  };
+
   // --- WebSocket Hooks ---
   const handleIncomingMessage = useCallback(
     async (msg: ChatMessageResponse) => {
@@ -198,7 +287,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   // ✅ YENİ EKLENECEK KISIM: Kullanıcı Offline Olduğunda "Last Seen" Güncelle
   useEffect(() => {
     const prevIds = prevOnlineIdsRef.current;
-    
+
     // Kimin çıktığını bul (Önceki listede var ama şimdikinde yoksa çıkmıştır)
     const disconnectedUserIds = prevIds.filter(id => !onlineIds.includes(id));
 
@@ -512,21 +601,21 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
   const isPeerOnline = peer ? onlineIds.includes(peer.id) : false;
   let lastSeenText: string | null = null;
-  
+
   if (peer) {
     // Peer objesini users state'inden bulalım (Çünkü güncel lastSeen orada)
     const currentPeerUser = users.find(u => u.id === peer.id);
 
     if (currentPeerUser && currentPeerUser.lastSeen) {
-       // Eğer kullanıcının lastSeen verisi varsa onu kullan (Daha doğru olan bu)
-       lastSeenText = "Son görülme " + formatTime(currentPeerUser.lastSeen);
+      // Eğer kullanıcının lastSeen verisi varsa onu kullan (Daha doğru olan bu)
+      lastSeenText = "Son görülme " + formatTime(currentPeerUser.lastSeen);
     } else {
-       // Yoksa (eski usul) son mesaja bak
-       const peerMessages = messages.filter((m) => m.senderId === peer.id);
-       if (peerMessages.length > 0) {
-         const latest = peerMessages[peerMessages.length - 1];
-         lastSeenText = "Son görülme " + formatTime(latest.createdAt);
-       }
+      // Yoksa (eski usul) son mesaja bak
+      const peerMessages = messages.filter((m) => m.senderId === peer.id);
+      if (peerMessages.length > 0) {
+        const latest = peerMessages[peerMessages.length - 1];
+        lastSeenText = "Son görülme " + formatTime(latest.createdAt);
+      }
     }
   }
 
@@ -943,7 +1032,27 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               <input type="file" ref={documentInputRef} onChange={(e) => handleFileSelect(e, "DOCUMENT")} style={{ display: "none" }} accept=".pdf,.doc,.docx,.txt,.xls,.xlsx" />
               <input type="file" ref={galleryInputRef} onChange={(e) => handleFileSelect(e, e.target.files?.[0].type.startsWith("video/") ? "VIDEO" : "IMAGE")} style={{ display: "none" }} accept="image/*,video/*" />
 
-              <div style={{ flex: 1, display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: "25px", padding: "5px 10px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", height: "50px", gap: "8px", position: "relative" }}>
+              {/* Beyaz Input Kutusu */}
+              <div style={{ flex: 1, display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: "25px", padding: "5px 10px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", height: "50px", gap: "0px", position: "relative" }}>
+
+                {/* 1. EMOJI PANELİ (Açık ise göster) */}
+                {showEmojiPicker && (
+                  <div style={{ position: "absolute", bottom: "80px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "0px", boxShadow: "0 10px 30px rgba(0,,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "200px", animation: "popupMenuEnter 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)", transformOrigin: "bottom left" }}>
+                    <EmojiPicker
+                      onEmojiClick={onEmojiClick}
+                      autoFocusSearch={false}
+                      theme={Theme.LIGHT}
+                      emojiStyle={EmojiStyle.APPLE}
+                      width="100%"   // Genişliği %100 yap ki kutuya tam otursun
+                      height={400}   // Yüksekliği biraz kıstım, daha derli toplu durur
+                      skinTonesDisabled={true} // ✅ O şekilsiz sarı butonu tamamen kaldırır
+                      searchDisabled={false}   // Arama çubuğu kalsın
+                      previewConfig={{
+                        showPreview: false
+                      }}
+                    />
+                  </div>
+                )}
                 {isPlusMenuOpen && (
                   <div style={{ position: "absolute", bottom: "80px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "15px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "200px", animation: "popupMenuEnter 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)", transformOrigin: "bottom left" }}>
                     {[
@@ -962,8 +1071,44 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                     ))}
                   </div>
                 )}
-                <button onClick={() => setPlusMenuOpen(!isPlusMenuOpen)} style={{ background: "transparent", border: "none", color: isPlusMenuOpen ? "#6F79FF" : "#9B95C9", fontSize: "20px", cursor: "pointer", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s", outline: "none", transform: isPlusMenuOpen ? "rotate(45deg)" : "rotate(0deg)" }}><FontAwesomeIcon icon={faPlus} /></button>
-                <input ref={inputRef} style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "16px", color: "#3E3663", height: "100%", padding: "0 5px" }} value={newMessage} onChange={handleInputChange} onClick={() => setPlusMenuOpen(false)} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="Bir mesaj yazın" />
+                {/* 3. PLUS BUTONU */}
+                <button
+                  onClick={() => {
+                    setPlusMenuOpen(!isPlusMenuOpen);
+                    setShowEmojiPicker(false); // Plus açılırsa emojiyi kapat
+                  }}
+                  style={{ background: "transparent", border: "none", color: isPlusMenuOpen ? "#6F79FF" : "#9B95C9", fontSize: "20px", cursor: "pointer", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s", outline: "none", transform: isPlusMenuOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
+                {/* 4. YENİ EKLENEN: EMOJI BUTONU */}
+                <button
+                  onClick={() => {
+                    setShowEmojiPicker(!showEmojiPicker);
+                    setPlusMenuOpen(false); // Emoji açılırsa plus menüyü kapat
+                  }}
+                  style={{
+                    background: "transparent", border: "none",
+                    color: showEmojiPicker ? "#6F79FF" : "#9B95C9", // Aktifse mor, değilse gri
+                    fontSize: "20px", cursor: "pointer", padding: "8px",
+                    display: "flex", alignItems: "center", justifyContent: "center", outline: "none"
+                  }}
+                >
+                  <FontAwesomeIcon icon={faSmile} />
+                </button>
+                {/* 5. INPUT ALANI */}
+                <input
+                  ref={inputRef}
+                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "16px", color: "#3E3663", height: "100%", padding: "0 5px" }}
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onClick={() => {
+                    setPlusMenuOpen(false);
+                    // setShowEmojiPicker(false); // Kullanıcı yazarken emoji kapanmasın istersen burayı yorum satırı yap
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  placeholder="Bir mesaj yazın"
+                />
               </div>
               <button onClick={() => { if (newMessage.trim()) handleSend(); else startRecording(); }} style={{ width: "50px", height: "50px", borderRadius: "50%", backgroundColor: "#6F79FF", color: "white", border: "none", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.2s ease", boxShadow: "0 4px 15px rgba(111, 121, 255, 0.4)", outline: "none", flexShrink: 0 }}><FontAwesomeIcon icon={newMessage.trim() ? faPaperPlane : faMicrophone} /></button>
             </>
