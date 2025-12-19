@@ -17,15 +17,17 @@ public class FileService {
         this.cloudinary = cloudinary;
     }
 
-    public String uploadImage(MultipartFile file) {
+    public String uploadImage(MultipartFile file) { // Adı uploadImage kalsa da dosya yükler
         try {
-            // Cloudinary'ye yükle ve sonucu al
-            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+            Map params = ObjectUtils.asMap(
+                    "resource_type", "auto"
+            );
 
-            // Yüklenen resmin güvenli (https) url'ini döndür
-            return uploadResult.get("secure_url").toString();
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), params);
+            return uploadResult.get("url").toString();
+
         } catch (IOException e) {
-            throw new RuntimeException("Resim yükleme başarısız oldu: " + e.getMessage());
+            throw new RuntimeException("Dosya yüklenemedi: " + e.getMessage());
         }
     }
 }

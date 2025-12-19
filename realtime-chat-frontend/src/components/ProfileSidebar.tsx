@@ -114,7 +114,8 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
               fontSize: 24,
               cursor: "pointer",
               display: "flex", alignItems: "center",
-              padding: 0
+              padding: 0,
+              outline: 0
             }}
           >
             ←
@@ -190,7 +191,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
                 )}
                 <button 
                   onClick={() => isEditingName ? handleSave("name") : setIsEditingName(true)} 
-                  style={{ background: "none", border: "none", fontSize: isEditingName ? 20 : 18, cursor: "pointer", color: isEditingName ? "#6F79FF" : "#9B95C9", padding: 0 }}
+                  style={{ background: "none", border: "none", fontSize: isEditingName ? 20 : 18, cursor: "pointer", color: isEditingName ? "#6F79FF" : "#9B95C9", padding: 0, outline: 0 }}
                 >
                   {isEditingName ? "✓" : "✎"}
                 </button>
@@ -215,7 +216,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
                 )}
                 <button 
                   onClick={() => isEditingAbout ? handleSave("about") : setIsEditingAbout(true)} 
-                  style={{ background: "none", border: "none", fontSize: isEditingAbout ? 20 : 18, cursor: "pointer", color: isEditingAbout ? "#6F79FF" : "#9B95C9", padding: 0 }}
+                  style={{ background: "none", border: "none", fontSize: isEditingAbout ? 20 : 18, cursor: "pointer", color: isEditingAbout ? "#6F79FF" : "#9B95C9", padding: 0, outline: 0 }}
                 >
                   {isEditingAbout ? "✓" : "✎"}
                 </button>

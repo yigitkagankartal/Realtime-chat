@@ -5,7 +5,8 @@ import {
   listConversations,
   listUsers,
   markConversationSeen,
-  getUserById
+  getUserById,
+  uploadAudio
 } from "../api/chat";
 import type {
   ChatMessageResponse,
@@ -19,10 +20,14 @@ import { useOnlineUsers } from "../hooks/useOnlineUsers";
 import ProfileSidebar from "./ProfileSidebar";
 import ProfileSetupModal from "./ProfileSetupModal";
 import ContactInfoSidebar from "./ContactInfoSidebar";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPaperPlane, faMicrophone, faTrash, faCheck, faPlus} from "@fortawesome/free-solid-svg-icons";
+import AudioPlayer from "./AudioPlayer";
 interface ChatLayoutProps {
   me: MeResponse;
   onLogout: () => void;
 }
+
 // ✅ CSS: Animasyon Kodları
 const typingIndicatorStyles = `
   @keyframes bounce {
@@ -43,7 +48,7 @@ styleSheet.innerText = typingIndicatorStyles;
 document.head.appendChild(styleSheet);
 
 
-// Tarih nesnesini alıp günün başlangıcına (00:00) çeker (karşılaştırma için)
+// Tarih nesnesini alıp günün başlangıcına (00:00) çeker
 const startOfDay = (d: Date) => {
   const newDate = new Date(d);
   newDate.setHours(0, 0, 0, 0);
@@ -60,17 +65,13 @@ const formatDateLabel = (dateString: string) => {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
 
-  // 1. Durum: Bugün
   if (messageDate.getTime() === today.getTime()) {
     return "Bugün";
   }
-
-  // 2. Durum: Dün
   if (messageDate.getTime() === yesterday.getTime()) {
     return "Dün";
   }
 
-  // 3. Durum: Son 1 hafta içindeyse Gün İsmi (Pazartesi, Salı...)
   const diffTime = Math.abs(today.getTime() - messageDate.getTime());
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -78,14 +79,13 @@ const formatDateLabel = (dateString: string) => {
     return date.toLocaleDateString("tr-TR", { weekday: "long" });
   }
 
-  // 4. Durum: Daha eskiyse tam tarih (09/12/2025)
   return date.toLocaleDateString("tr-TR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
 };
-// Saat formatı (sadece saat:dakika)
+
 const formatTime = (iso: string | undefined) =>
   iso
     ? new Date(iso).toLocaleTimeString([], {
@@ -94,7 +94,6 @@ const formatTime = (iso: string | undefined) =>
     })
     : "";
 
-// Tik seçici – sadece SEEN → çift tik, diğerleri tek tik
 const renderStatusTicks = (status?: MessageStatus) => {
   if (status === "SEEN") return "✓✓";
   return "✓";
@@ -108,11 +107,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     useState<ConversationResponse | null>(null);
   const [messages, setMessages] = useState<ChatMessageResponse[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [page, setPage] = useState(0); // Şu an kaçıncı sayfadayız?
-  const [hasMore, setHasMore] = useState(true); // Daha eski mesaj var mı?
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false); // Yükleniyor mu?
-  const scrollRef = useRef<HTMLDivElement>(null); // Mesaj kutusunu seçmek için
-  const [prevScrollHeight, setPrevScrollHeight] = useState<number | null>(null); // Zıplamayı önlemek için
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [prevScrollHeight, setPrevScrollHeight] = useState<number | null>(null);
   const [isProfileSidebarOpen, setProfileSidebarOpen] = useState(false);
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<MeResponse>(me);
@@ -120,23 +119,29 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const [contactSidebarOpen, setContactSidebarOpen] = useState(false);
   const [contactInfo, setContactInfo] = useState<UserListItem | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  // Her konuşmanın mesajlarını cachelemek için (sol listede son mesaj & unread için)
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+
+  // TypeScript için timer ref tipleri düzeltildi
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [messageCache, setMessageCache] = useState<
     Record<number, ChatMessageResponse[]>
   >({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const onlineIds = useOnlineUsers(me.id);
-  const typingTimeoutRef = useRef<any>(null);
 
-  // Mesaj dinleyici (WebSocket)
+  // Mesaj dinleyici
   const handleIncomingMessage = useCallback(
     async (msg: ChatMessageResponse) => {
       if (msg.conversationId === selectedConversation?.id) {
-        // UI'ya direkt ekle
         setMessages((prev) => [...prev, msg]);
       }
 
-      // Gelen mesajı cache'e de ekle (hangi sohbetten geliyorsa)
       setMessageCache((prev) => {
         const existing = prev[msg.conversationId] ?? [];
         return {
@@ -145,13 +150,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         };
       });
 
-      // Bu mesajı ben göndermediysem → SEEN tetikle
       if (msg.senderId !== me.id) {
         try {
           await markConversationSeen(msg.conversationId, me.id);
-          console.log("SEEN gönderildi");
-
-          // SEEN güncellemesi DB'de yapıldıktan sonra mesajları tazele
           const refreshed = await getMessages(msg.conversationId, me.id);
 
           setMessages((prev) =>
@@ -179,14 +180,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      // 2. "Yazıyor..." durumunu aktif et (veya aktif tut)
       setTypingUserId(senderId);
 
-      // 3. Yeni bir sayaç başlat: "Eğer 2 saniye boyunca başka sinyal gelmezse kapat"
       typingTimeoutRef.current = setTimeout(() => {
         setTypingUserId(null);
         typingTimeoutRef.current = null;
-      }, 2000); // 2 saniye bekleme süresi
+      }, 2000);
     },
     [me.id]
   );
@@ -197,7 +196,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     handleTyping
   );
 
-  // Kullanıcı + sohbet + her sohbet için mesajları preload et
   useEffect(() => {
     const load = async () => {
       const [userList, convList] = await Promise.all([
@@ -207,7 +205,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       setUsers(userList);
       setConversations(convList);
 
-      // Tüm konuşmalar için son mesaj / unread gösterebilmek adına mesajları önden çek
       const cache: Record<number, ChatMessageResponse[]> = {};
 
       await Promise.all(
@@ -227,7 +224,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     load();
   }, [me.id]);
 
-  // Sohbet aç
   const openConversationWith = async (otherUserId: number) => {
     setContactSidebarOpen(false);
     setContactInfo(null);
@@ -247,13 +243,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
     setMessages(sortedHistory);
 
-    // cache'i güncelle
     setMessageCache((prev) => ({
       ...prev,
       [conv.id]: sortedHistory,
     }));
 
-    // sohbeti açar açmaz SEEN olarak işaretle
     markConversationSeen(conv.id, me.id).catch(() => { });
   };
 
@@ -277,8 +271,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     sendTyping(me.id);
   };
 
-
-  // Seçili konuşmadaki karşı tarafın bilgisi
   const getPeerInfo = () => {
     if (!selectedConversation) return null;
     const peerId =
@@ -301,13 +293,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     const target = e.currentTarget;
 
     if (target.scrollTop === 0 && hasMore && !isLoadingHistory) {
-
       setIsLoadingHistory(true);
-
       setPrevScrollHeight(target.scrollHeight);
 
       const nextPage = page + 1;
-
       const oldMessages = await getMessages(selectedConversation!.id, me.id, nextPage);
 
       if (oldMessages.length === 0) {
@@ -321,9 +310,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       }
 
       const sortedOldMessages = [...oldMessages].reverse();
-
       setMessages((prev) => [...sortedOldMessages, ...prev]);
-
       setPage(nextPage);
       setIsLoadingHistory(false);
     }
@@ -332,7 +319,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const peer = getPeerInfo();
   const isPeerOnline = peer ? onlineIds.includes(peer.id) : false;
 
-  // Son görülme metni (bugün, dün, yakınlarda)
   let lastSeenText: string | null = null;
 
   if (peer) {
@@ -366,21 +352,21 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       }
     }
   }
-  // Auto-scroll
+
   useEffect(() => {
     if (!selectedConversation) return;
     if (prevScrollHeight) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages, selectedConversation?.id]);
+
   useEffect(() => {
     if (prevScrollHeight && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight - prevScrollHeight;
       setPrevScrollHeight(null);
     }
-  }, [messages]); // Mesajlar değişince çalışır
+  }, [messages]);
+
   useEffect(() => {
-    // Backend'de display name varsayılan olarak telefon nosu atandığını varsayıyoruz.
-    // +905... formatını temizleyip kıyaslayabilirsin veya direkt eşitlik kontrolü.
     if (me.displayName === me.phoneNumber) {
       setShowSetupModal(true);
     }
@@ -392,20 +378,108 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Sidebar'dan gelen güncellemeyi işle
+  useEffect(() => {
+    if (selectedConversation) {
+      if (!isMobile) {
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      }
+    }
+  }, [selectedConversation, isMobile]);
+
+  // BU FONKSİYONU ESKİSİNİN YERİNE YAPIŞTIR
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const localChunks: Blob[] = []; // Veriyi burada tutacağız
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) localChunks.push(e.data);
+      };
+
+      // Kayıt durduğunda (stop() çağrıldığında) burası çalışır
+      recorder.onstop = async () => {
+        // Eğer kayıt çok kısaysa (yanlışlıkla basıldıysa) iptal et
+        if (localChunks.length === 0) return;
+
+        const audioBlob = new Blob(localChunks, { type: "audio/webm" });
+
+        // Eğer kullanıcı "İptal" butonuna bastıysa bu fonksiyon çalışmasın diye bir flag kontrolü yapılabilir
+        // Ama şimdilik basit tutalım: onstop her zaman göndermeye çalışır. 
+        // İptal etmek için cancelRecording içinde onstop'u null yapacağız.
+
+        await sendAudioMessage(audioBlob);
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      timerRef.current = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
+
+    } catch (err) {
+      console.error(err);
+      alert("Mikrofon izni gerekli.");
+    }
+  };
+
+  // İPTAL FONKSİYONU (Güncel)
+  const cancelRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.onstop = null; // ✅ Göndermeyi engelle
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    stopTimer();
+    setIsRecording(false);
+    setMediaRecorder(null);
+  };
+
+  // GÖNDERME FONKSİYONU (Güncel)
+  const finishRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop(); // Bu, onstop'u tetikler -> sendAudioMessage çalışır
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    stopTimer();
+    setIsRecording(false);
+    setMediaRecorder(null);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const sendAudioMessage = async (audioBlob: Blob) => {
+    if (!selectedConversation) return;
+    try {
+      const audioUrl = await uploadAudio(audioBlob);
+      sendMessage({
+        conversationId: selectedConversation.id,
+        senderId: me.id,
+        content: "AUDIO::" + audioUrl,
+      });
+    } catch (error) {
+      console.error("Ses gönderilemedi:", error);
+    }
+  };
+
   const handleUpdateMe = (updated: MeResponse) => {
     setCurrentUser(updated);
   };
 
-  // Sağ Header'a tıklayınca çalışacak
   const handleContactClick = async () => {
     if (!peer) return;
-
-    // Sidebar'ı aç
     setContactSidebarOpen(true);
-
     try {
-      // Backend'den güncel veriyi (About, Resim vs) çek
       const data = await getUserById(peer.id);
       setContactInfo(data);
     } catch (error) {
@@ -413,14 +487,16 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     }
   };
 
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
 
-  // Sol panel için: kullanıcı + conversation + son mesaj + unread bilgisi
   const sidebarItems = users
     .filter((u) => u.id !== me.id)
     .map((user) => {
       const isOnline = onlineIds.includes(user.id);
-
-      // Bu kullanıcı ile olan conversation'ı bul
       const conv = conversations.find(
         (c) =>
           (c.user1Id === me.id && c.user2Id === user.id) ||
@@ -428,16 +504,24 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       );
 
       const convMessages = conv ? messageCache[conv.id] ?? [] : [];
-
       const lastMessage =
         convMessages.length > 0
           ? convMessages[convMessages.length - 1]
           : undefined;
 
       const lastMessageText = lastMessage
-        ? (lastMessage.senderId === me.id ? "Sen: " : "") +
-        lastMessage.content
-        : "Henüz mesaj yok";
+  ? (
+      lastMessage.content.startsWith("AUDIO::") ? (
+          // Eğer ses kaydıysa: Mikrofon İkonu + "Sesli Mesaj" yazısı
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <FontAwesomeIcon icon={faMicrophone} /> Sesli Mesaj
+          </span>
+      ) : (
+          // Normal mesajsa: "Sen: selam" gibi göster
+          (lastMessage.senderId === me.id ? "Sen: " : "") + lastMessage.content
+      )
+    )
+  : "Henüz mesaj yok";
 
       const lastMessageTime = lastMessage
         ? formatTime(lastMessage.createdAt)
@@ -461,7 +545,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         lastMessageDate,
       };
     })
-    // En son mesaj atan konuşma en üstte olacak şekilde sırala
     .sort((a, b) => b.lastMessageDate - a.lastMessageDate);
 
   return (
@@ -480,7 +563,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
             position: "fixed", zIndex: 3000, top: 0, left: 0, width: "100%", height: "100%",
             backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center"
           }}
-          onClick={() => setViewingImage(null)} // Boşluğa tıklayınca kapat
+          onClick={() => setViewingImage(null)}
         >
           <img
             src={viewingImage}
@@ -516,14 +599,14 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         onClose={() => setProfileSidebarOpen(false)}
         me={currentUser}
         onUpdateMe={handleUpdateMe}
-        onViewImage={(url) => setViewingImage(url)} // Resmi büyütmek için
+        onViewImage={(url) => setViewingImage(url)}
       />
 
-      {/* 4. YENİ BİLEŞEN: CONTACT INFO SIDEBAR (SAĞ) */}
+      {/* 4. CONTACT INFO SIDEBAR (SAĞ) */}
       <ContactInfoSidebar
         isOpen={contactSidebarOpen}
         onClose={() => setContactSidebarOpen(false)}
-        user={contactInfo} // API'den gelen detaylı veri
+        user={contactInfo}
         onViewImage={(url) => setViewingImage(url)}
         lastSeenText={isPeerOnline ? "Çevrimiçi" : (lastSeenText ?? "")}
       />
@@ -531,16 +614,16 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       {/* SOL PANEL */}
       <div
         style={{
-          width: isMobile ? "100%" : 300, // Mobilde tam ekran, masaüstünde 350px
-          display: isMobile && selectedConversation ? "none" : "flex", // Mobilde sohbet açıksa gizle
-          borderRight: isMobile ? "none" : "1px solid #DDD6FF", // Mobilde çizgiye gerek yok
+          width: isMobile ? "100%" : 300,
+          display: isMobile && selectedConversation ? "none" : "flex",
+          borderRight: isMobile ? "none" : "1px solid #DDD6FF",
           backgroundColor: "#F5F3FF",
           padding: "12px 14px",
           flexDirection: "column",
-          overflowY: "auto", // Scroll olsun
+          overflowY: "auto",
         }}
       >
-        {/* SOL PANEL HEADER (Profil Resmi & Tıklama Alanı) */}
+        {/* SOL PANEL HEADER */}
         <div
           style={{
             display: "flex",
@@ -551,21 +634,18 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
             borderBottom: "1px solid #EAE6FF",
           }}
         >
-          {/* Profilim (Sidebar Tetikleyici) */}
           <div
             onClick={() => setProfileSidebarOpen(true)}
             style={{
               display: "flex",
               alignItems: "center",
               gap: 12,
-              cursor: "pointer", // ✅ Sadece imleç el işareti oluyor
-              flex: 1,           // ✅ Boydan boya kaplıyor
+              cursor: "pointer",
+              flex: 1,
               padding: "8px",
               borderRadius: "12px",
-              // Hover rengi veya transition kodları SİLİNDİ
             }}
           >
-            {/* Avatar */}
             <div
               style={{
                 width: 42, height: 42, borderRadius: "50%",
@@ -582,8 +662,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
             >
               {!currentUser.profilePictureUrl && currentUser.displayName.charAt(0).toUpperCase()}
             </div>
-            
-            {/* ✅ Sadece "Profilim" yazısı kaldı, alt metin silindi */}
             <span style={{ fontSize: 16, fontWeight: 700, color: "#3E3663" }}>
               Profilim
             </span>
@@ -654,17 +732,17 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         </ul>
       </div>
 
-      {/* SAĞ PANEL (Bu div'i bul ve style kısmını güncelle) */}
+      {/* SAĞ PANEL */}
       <div
         style={{
           flex: 1,
-          display: isMobile && !selectedConversation ? "none" : "flex", // Mobilde sohbet yoksa gizle
+          display: isMobile && !selectedConversation ? "none" : "flex",
           flexDirection: "column",
           background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)",
-          height: "100vh" // Yüksekliği garantiye al
+          height: "100vh"
         }}
       >
-        {/* ÜST BAR (Sağ Panel Header) */}
+        {/* ÜST BAR */}
         <div
           style={{
             height: "65px",
@@ -678,10 +756,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
             boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
           }}
         >
-          {/* SOL GRUP: (Geri Butonu + Profil/Kişi Bilgisi) */}
+          {/* SOL GRUP */}
           <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, overflow: "hidden" }}>
-            
-            {/* 1. GERİ BUTONU (Sadece Mobilde) */}
             {isMobile && (
               <button
                 onClick={() => setSelectedConversation(null)}
@@ -695,7 +771,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               </button>
             )}
 
-            {/* 2. KULLANICI BİLGİSİ (Boydan Boya Uzayan) */}
             {peer ? (
               <div
                 onClick={handleContactClick}
@@ -703,14 +778,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  cursor: "pointer", // Tıklanabilir olduğu belli olsun
+                  cursor: "pointer",
                   padding: "5px 0",
-                  flex: 1, // ✅ BOYDAN BOYA KAPLAMASI İÇİN
-                  minWidth: 0, // Flex içinde text taşmasını önler
-                  // Hover rengi YOK, sadece pointer var.
+                  flex: 1,
+                  minWidth: 0,
                 }}
               >
-                {/* Profil Resmi */}
                 <div
                   style={{
                     width: 42, height: 42,
@@ -727,7 +800,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                   {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
                 </div>
 
-                {/* İsim ve Durum */}
                 <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                   <div style={{ fontWeight: 600, fontSize: 16, lineHeight: "1.2", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {peer.name}
@@ -742,7 +814,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
             )}
           </div>
 
-          {/* SAĞ GRUP: Çıkış Butonu */}
           <button
             onClick={onLogout}
             style={{
@@ -751,7 +822,8 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               padding: "8px 16px", borderRadius: 20,
               cursor: "pointer", fontWeight: 600, fontSize: "13px",
               marginLeft: "10px",
-              flexShrink: 0
+              flexShrink: 0,
+              outline: 0
             }}
           >
             Çıkış
@@ -791,12 +863,32 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                     )}
                     <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 12 }}>
                       <div style={{
-                        backgroundColor: isMine ? "#CFC7FF" : "#FFFFFF",
+                        backgroundColor: isMine ? "#5865F2" : "#F3F4F6",
                         borderRadius: 16, borderTopRightRadius: isMine ? 0 : 16, borderTopLeftRadius: !isMine ? 0 : 16,
                         padding: "10px 14px", maxWidth: "70%", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", position: "relative"
                       }}>
-                        <div style={{ color: "#3E3663" }}>{m.content}</div>
-                        <div style={{ textAlign: "right", fontSize: 11, marginTop: 4, color: "#6F79FF" }}>
+                        <div style={{ color: isMine ? "white" : "#3E3663" }}>
+                          {m.content.startsWith("AUDIO::") ? (
+                            // ✅ YENİ AUDIO PLAYER BİLEŞENİ
+                            <AudioPlayer
+                              audioUrl={m.content.replace("AUDIO::", "")}
+                              isMine={isMine}
+                              // Profil resmini bulmak için biraz mantık gerekiyor:
+                              senderProfilePic={
+                                isMine
+                                  ? me.profilePictureUrl
+                                  : (selectedConversation?.user1Id === m.senderId
+                                    ? users.find(u => u.id === m.senderId)?.profilePictureUrl // Cache veya user listesinden bul
+                                    : peer?.profilePictureUrl) // Peer zaten karşı taraf
+                              }
+                            />
+                          ) : (
+                            m.content
+                          )}
+                        </div>
+
+                        {/* Saat ve Tikler (Mevcut kodun) */}
+                        <div style={{ textAlign: "right", fontSize: 11, marginTop: 4, color: isMine ? "rgba(255,255,255,0.7)" : "#9B95C9" }}>
                           {time} {isMine && renderStatusTicks(m.status)}
                         </div>
                       </div>
@@ -805,44 +897,29 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                 );
               })}
 
-            {/* ✅ YENİ EKLENECEK KISIM: YAZIYOR BALONCUĞU */}
+            {/* YAZIYOR BALONCUĞU */}
             <div
               style={{
-                // Görünürken alt padding var, gizlenirken padding yok (yer kaplamasın diye)
                 padding: typingUserId === peer?.id ? "0 24px 16px 24px" : "0 24px 0 24px",
-
-                // Yazıyorsa görünür (opacity 1), yoksa gizli (opacity 0)
                 opacity: typingUserId === peer?.id ? 1 : 0,
-
-                // Yazıyorsa olduğu yerde, yoksa 10px aşağıda dursun (yukarı kayma efekti)
                 transform: typingUserId === peer?.id ? "translateY(0)" : "translateY(10px)",
-
-                // ⚠️ ÖNEMLİ DÜZELTME: max-height ve padding geçişlerini de ekliyoruz
-                // Bu sayede aniden değil, yumuşak bir şekilde küçülerek ve solarak kaybolacak
                 transition: "opacity 0.5s ease-in-out, transform 0.5s ease-in-out, max-height 0.5s ease-in-out, padding 0.5s ease-in-out",
-
-                // Görünmezken tıklamayı engelle
                 pointerEvents: typingUserId === peer?.id ? "auto" : "none",
-
-                // Görünmezken yer kaplamasın (akışı bozmasın)
-                // height yerine max-height kullanıyoruz ve animasyonluyoruz
-                maxHeight: typingUserId === peer?.id ? 60 : 0, // Baloncuğun yüksekliğine göre bir değer
-
+                maxHeight: typingUserId === peer?.id ? 60 : 0,
                 overflow: "hidden"
               }}
             >
               <div style={{
-                backgroundColor: "#FFFFFF", // Karşı taraf mesaj rengi
-                padding: "10px 14px",       // Biraz daha kompakt
+                backgroundColor: "#FFFFFF",
+                padding: "10px 14px",
                 borderRadius: 16,
-                borderTopLeftRadius: 0,     // Sol üst köşe sivri
+                borderTopLeftRadius: 0,
                 display: "inline-flex",
                 alignItems: "center",
                 boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
                 width: "fit-content",
                 minHeight: 36
               }}>
-                {/* Üç Nokta Animasyonu */}
                 <div className="typing-dot"></div>
                 <div className="typing-dot"></div>
                 <div className="typing-dot"></div>
@@ -853,15 +930,135 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           </div>
         </div>
 
-        {/* INPUT */}
-        <div style={{ padding: 12, display: "flex", gap: 10, backgroundColor: "#F5F3FF", borderTop: "1px solid #DDD6FF" }}>
-          <input
-            style={{ flex: 1, padding: 12, borderRadius: 25, border: "1px solid #DDD6FF", outline: "none", backgroundColor: "#FFFFFF", color: "#3E3663" }}
-            value={newMessage} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="Mesaj yaz..."
-          />
-          <button onClick={handleSend} style={{ padding: "12px 22px", borderRadius: 25, background: "linear-gradient(90deg, #6F79FF, #9B8CFF)", border: "none", color: "white", fontWeight: 600, cursor: "pointer" }}>
-            Gönder
-          </button>
+        {/* ✅ INPUT ALANI (TAMAMEN "FLOATING" / HAVADA DURAN TASARIM) */}
+        <div style={{
+          minHeight: "80px",
+          padding: "0 20px 20px 20px", // Alttan ve yanlardan boşluk bıraktık
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          // 👇 KRİTİK DEĞİŞİKLİKLER BURADA:
+          backgroundColor: "transparent", // ❌ Arka plan YOK (Sohbet rengi gözükecek)
+          borderTop: "none",              // ❌ Çizgi YOK
+          boxShadow: "none",              // ❌ Dış kutuda gölge YOK
+          position: "relative",
+          zIndex: 10
+        }}>
+
+          {isRecording ? (
+            // 🔴 KAYIT MODU
+            <>
+              {/* İptal Butonu */}
+              <button
+                onClick={cancelRecording}
+                style={{
+                  background: "#FFFFFF", // Butonun kendi arka planı olsun
+                  border: "none", color: "#FF4D4D",
+                  width: "50px", height: "50px", borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "20px", cursor: "pointer",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.1)", // Kendi gölgesi
+                  transition: "0.2s", outline: "none"
+                }}
+                title="İptal Et"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </button>
+
+              {/* Sayaç Animasyonu */}
+              <div style={{ 
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                  background: "#FFFFFF", // Beyaz Hap
+                  borderRadius: 30, height: 50,
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.05)" // Kendi gölgesi
+              }}>
+                <div style={{
+                  width: 12, height: 12, borderRadius: "50%", backgroundColor: "#FF4D4D",
+                  animation: "pulseRed 1s infinite"
+                }} />
+                <span style={{ fontSize: "18px", color: "#6F79FF", fontWeight: "bold", fontFamily: "monospace" }}>
+                  {formatDuration(recordingDuration)}
+                </span>
+              </div>
+
+              {/* Gönder (Tik) Butonu */}
+              <button
+                onClick={finishRecording}
+                style={{
+                  width: "50px", height: "50px", borderRadius: "50%",
+                  backgroundColor: "#00C853", 
+                  color: "white", border: "none", fontSize: "20px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", boxShadow: "0 4px 15px rgba(0,200,83, 0.4)",
+                  transition: "0.2s", outline: "none"
+                }}
+              >
+                <FontAwesomeIcon icon={faCheck} />
+              </button>
+            </>
+          ) : (
+            // 🔵 NORMAL MOD
+            <>
+              {/* Artı Butonu (Yuvarlak beyaz zemin içinde) */}
+              <button style={{
+                backgroundColor: "#FFFFFF", // Kendi zemini
+                border: "none", color: "#9B95C9",
+                width: "50px", height: "50px", borderRadius: "50%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "22px", cursor: "pointer",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.05)", // Hafif gölge
+                outline: "none", transition: "transform 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+              >
+                <FontAwesomeIcon icon={faPlus} />
+              </button>
+
+              {/* 👇 INPUT KUTUSU (BEYAZ, GÖLGELİ, HAP) */}
+              <input
+                ref={inputRef}
+                style={{
+                  flex: 1,
+                  height: "50px", // Yükseklik sabitlendi
+                  padding: "0 24px",
+                  borderRadius: "25px",
+                  border: "none", 
+                  backgroundColor: "#FFFFFF", // Beyaz Zemin
+                  color: "#3E3663",
+                  fontSize: "16px",
+                  outline: "none",
+                  boxShadow: "0 4px 15px rgba(0,0,0,0.05)" // Havada durma efekti burada
+                }}
+                value={newMessage}
+                onChange={handleInputChange}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder="Bir mesaj yazın"
+              />
+
+              {/* Dinamik Buton */}
+              <button
+                onClick={() => {
+                  if (newMessage.trim()) handleSend();
+                  else startRecording();
+                }}
+                style={{
+                  width: "50px", height: "50px", borderRadius: "50%",
+                  backgroundColor: "#6F79FF",
+                  color: "white",
+                  border: "none",
+                  fontSize: "20px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  boxShadow: "0 4px 15px rgba(111, 121, 255, 0.4)", // Mor gölge
+                  outline: "none"
+                }}
+              >
+                <FontAwesomeIcon icon={newMessage.trim() ? faPaperPlane : faMicrophone} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

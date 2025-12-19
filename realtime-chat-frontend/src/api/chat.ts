@@ -80,3 +80,13 @@ export const getUserById = async (userId: number): Promise<UserListItem> => {
   return res.data;
 };
 
+export const uploadAudio = async (audioBlob: Blob): Promise<string> => {
+  const formData = new FormData();
+  const fileName = `voice_msg_${Date.now()}.webm`; 
+  formData.append("file", audioBlob, fileName);
+
+  const res = await api.post<{ url: string }>("/api/files/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.url;
+};

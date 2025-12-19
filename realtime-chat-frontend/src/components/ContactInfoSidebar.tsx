@@ -50,9 +50,9 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
     >
       {/* HEADER */}
       <div style={{ display: "flex", alignItems: "center", padding: "15px 20px", backgroundColor: "#F5F3FF" }}>
-        <button 
-          onClick={onClose} 
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: "#3E3663", marginRight: 15 }}
+        <button
+          onClick={onClose}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 24, color: "#3E3663", marginRight: 15, outline: "0" }}
         >
           ✕
         </button>
@@ -61,10 +61,10 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
 
       {/* BODY */}
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 20 }}>
-        
+
         {/* PROFİL FOTOĞRAFI & İSİM */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 0 30px 0", backgroundColor: "#F5F3FF" }}>
-          
+
           <div
             onClick={() => user.profilePictureUrl && onViewImage(user.profilePictureUrl)}
             style={{
@@ -92,34 +92,34 @@ const ContactInfoSidebar: React.FC<ContactInfoSidebarProps> = ({
 
         {/* BİLGİ KARTLARI (Yontulmuş Köşeli Tasarım) */}
         <div style={{ padding: "0 15px" }}>
-            
-            {isNameSet && (
-                <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-                    <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Telefon Numarası</div>
-                    <div style={{ fontSize: 16, color: "#3E3663" }}>{user.phoneNumber}</div>
-                </div>
-            )}
 
+          {isNameSet && (
             <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-                <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Hakkında</div>
-                <div style={{ fontSize: 16, color: "#3E3663", lineHeight: 1.5 }}>
-                    {user.about || "Müsait"}
-                </div>
+              <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Telefon Numarası</div>
+              <div style={{ fontSize: 16, color: "#3E3663" }}>{user.phoneNumber}</div>
             </div>
+          )}
 
-            <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginTop: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: 16, color: "#3E3663" }}>Medya, bağlantı ve belgeler</div>
-                <div style={{ color: "#9B95C9" }}>0 ›</div>
+          <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Hakkında</div>
+            <div style={{ fontSize: 16, color: "#3E3663", lineHeight: 1.5 }}>
+              {user.about || "Müsait"}
             </div>
+          </div>
 
-            <div style={{ marginTop: 30 }}>
-                <button style={{ width: "100%", padding: "15px", textAlign: "left", background: "none", border: "none", color: "#FF4D4D", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-                    🚫 {isNameSet ? user.displayName : user.phoneNumber} kişisini engelle
-                </button>
-                <button style={{ width: "100%", padding: "15px", textAlign: "left", background: "none", border: "none", color: "#FF4D4D", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-                    👎 {isNameSet ? user.displayName : user.phoneNumber} kişisini şikayet et
-                </button>
-            </div>
+          <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginTop: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+            <div style={{ fontSize: 16, color: "#3E3663" }}>Medya, bağlantı ve belgeler</div>
+            <div style={{ color: "#9B95C9" }}>0 ›</div>
+          </div>
+
+          <div style={{ marginTop: 30 }}>
+            <button style={{ width: "100%", padding: "15px", textAlign: "left", background: "none", border: "none", color: "#FF4D4D", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, outline: "0" }}>
+              🚫 {isNameSet ? user.displayName : user.phoneNumber} kişisini engelle
+            </button>
+            <button style={{ width: "100%", padding: "15px", textAlign: "left", background: "none", border: "none", color: "#FF4D4D", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, outline: "0" }}>
+              👎 {isNameSet ? user.displayName : user.phoneNumber} kişisini şikayet et
+            </button>
+          </div>
         </div>
       </div>
     </div>
