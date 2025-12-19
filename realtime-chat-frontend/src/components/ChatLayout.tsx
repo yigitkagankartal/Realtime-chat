@@ -7,7 +7,10 @@ import {
   markConversationSeen,
   getUserById,
   uploadAudio,
-  uploadMedia
+  uploadMedia,
+  getAnnouncements,
+  postAnnouncement,
+  reactToAnnouncement
 } from "../api/chat";
 import type {
   ChatMessageResponse,
@@ -54,82 +57,39 @@ const styles = `
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
 
-  /* --- EMOJI PICKER STİLLERİ (Referans Tasarıma Göre) --- */
-
-  /* 1. Ana Kutu (Referans görseldeki gibi geniş, yuvarlak, gölgeli) */
+  /* --- EMOJI PICKER STİLLERİ --- */
   .EmojiPickerReact.epr-main {
-      border: none !important; /* Kendi çerçevesini kaldır */
-      border-radius: 24px !important; /* Referanstaki gibi daha yuvarlak köşe */
-      box-shadow: 0 10px 40px rgba(0,0,0,0.12) !important; /* Yumuşak gölge */
-      font-family: 'Segoe UI', sans-serif !important; /* Yazı tipini eşle */
-      --epr-picker-border-radius: 24px !important; /* Değişkenleri de güncelle */
+      border: none !important;
+      border-radius: 24px !important;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12) !important;
+      font-family: 'Segoe UI', sans-serif !important;
+      --epr-picker-border-radius: 24px !important;
+      --epr-category-icon-active-color: #6F79FF !important;
   }
   
-  /* 🔥 İŞTE ÇÖZÜM BURASI: O YUVARLAĞI SİLEN KODLAR */
   .EmojiPickerReact button:focus, .EmojiPickerReact button:active, .EmojiPickerReact .epr-btn:focus {
-      outline: none !important;
-      box-shadow: none !important;
-      background-color: transparent !important; /* Arkaplanı şeffaf yap */
-      border: none !important;
+      outline: none !important; box-shadow: none !important; background-color: transparent !important; border: none !important;
   }
 
-  /* 3. Kategori Butonları (Kopukluğu düzeltir ve hizalar) - TALEBİN */
+  /* Kategori İkonları */
   .EmojiPickerReact .epr-category-nav {
-      display: flex !important;
-      justify-content: space-between !important; /* İkonları eşit yay */
-      padding: 0px 15px 0 15px !important; /* Üstten biraz boşluk */
-      overflow-x: hidden !important; /* Taşmayı engelle */
-      width: 100% !important;
-      box-sizing: border-box !important;
+      display: flex !important; justify-content: space-between !important; padding: 0px 15px 0 15px !important; width: 100% !important; box-sizing: border-box !important;
   }
   .EmojiPickerReact .epr-category-nav > button.epr-btn {
-      flex: 1 !important; /* Hepsi eşit genişlikte olsun */
-      min-width: unset !important;
-      padding: 8px 0 !important; /* Dikeyde biraz boşluk */
-      margin: 0 !important;
-      width: auto !important;
-      opacity: 0.6; /* Pasifken biraz soluk dursun */
-      transition: opacity 0.2s;
+      flex: 1 !important; min-width: unset !important; padding: 8px 0 !important; margin: 0 !important; width: auto !important; opacity: 0.6; transition: opacity 0.2s;
   }
-  .EmojiPickerReact .epr-category-nav > button.epr-btn:hover,
-  .EmojiPickerReact .epr-category-nav > button.epr-btn.epr-active {
-      opacity: 1; /* Aktifken veya üzerine gelince parlak olsun */
+  .EmojiPickerReact .epr-category-nav > button.epr-btn:hover, .EmojiPickerReact .epr-category-nav > button.epr-btn.epr-active {
+      opacity: 1; color: #6F79FF !important;
   }
   .EmojiPickerReact .epr-category-nav > button.epr-btn > span { display: flex; justify-content: center; }
 
-  /* 4. Arama Çubuğu (Modern ve şık) */
-  .EmojiPickerReact .epr-search-container {
-      padding: 5px !important; /* Kenar boşlukları */
-  }
-  .EmojiPickerReact .epr-search-container input {
-      border-radius: 20px !important; /* Yuvarlak input */
-      background-color: #F5F3FF !important; /* Temana uygun açık renk */
-      border: 1px solid #EAE6FF !important; /* Hafif çerçeve */
-      height: 40px !important;
-      padding-left: 40px !important; /* İkon için yer */
-      font-size: 15px !important;
-  }
-  /* Arama ikonu */
-  .EmojiPickerReact .epr-search-container .epr-icn-search {
-      left: 25px !important; /* İkonu biraz içeri al */
-      color: #9B95C9 !important;
-  }
-
-  /* 5. Emoji Listesi ve Başlıklar */
-  .EmojiPickerReact .epr-body {
-      padding: 0 10px !important; /* Kenarlardan biraz içeride olsun */
-  }
-  .EmojiPickerReact .epr-category-heading {
-      font-size: 14px !important;
-      font-weight: 600 !important;
-      color: #9B95C9 !important; /* Başlık rengi */
-      padding: 10px 5px !important;
-  }
-
-  /* 6. "Preview" (önizleme) barını gizle */
-  .EmojiPickerReact .epr-preview {
-      display: none !important; 
-  }
+  /* Arama Çubuğu */
+  .EmojiPickerReact .epr-search-container { padding: 5px !important; }
+  .EmojiPickerReact .epr-search-container input { border-radius: 20px !important; background-color: #F5F3FF !important; border: 1px solid #EAE6FF !important; height: 40px !important; padding-left: 40px !important; font-size: 15px !important; }
+  .EmojiPickerReact .epr-search-container .epr-icn-search { left: 25px !important; color: #9B95C9 !important; }
+  .EmojiPickerReact .epr-body { padding: 0 10px !important; }
+  .EmojiPickerReact .epr-category-heading { font-size: 14px !important; font-weight: 600 !important; color: #9B95C9 !important; padding: 10px 5px !important; }
+  .EmojiPickerReact .epr-preview { display: none !important; }
 `;
 
 const styleSheet = document.createElement("style");
@@ -225,6 +185,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const onlineIds = useOnlineUsers(me.id);
   const prevOnlineIdsRef = useRef<number[]>([]);
 
+  // ADMIN & DUYURU
+  const [activeTab, setActiveTab] = useState<"CHATS" | "CHANNELS">("CHATS"); // Sekme kontrolü
+  const [announcements, setAnnouncements] = useState<any[]>([]); // Duyuru listesi
+  const [channelMessage, setChannelMessage] = useState(""); // Admin duyuru yazısı
+
   // ✅ DOSYA ÖNİZLEME STATE'LERİ
   const [selectedFile, setSelectedFile] = useState<{
     file: File;
@@ -239,10 +204,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
   // Emoji seçildiğinde çalışacak fonksiyon
   const onEmojiClick = (emojiData: any) => {
-    // Mevcut mesajın sonuna emojiyi ekle
     setNewMessage((prev) => prev + emojiData.emoji);
-    // İstersen seçimden sonra kapatabilirsin, ama genelde açık kalması istenir
-    // setShowEmojiPicker(false); 
   };
 
   // --- WebSocket Hooks ---
@@ -284,25 +246,19 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     handleTyping
   );
 
-  // ✅ YENİ EKLENECEK KISIM: Kullanıcı Offline Olduğunda "Last Seen" Güncelle
+  // ✅ Kullanıcı Offline Olduğunda "Last Seen" Güncelle
   useEffect(() => {
     const prevIds = prevOnlineIdsRef.current;
-
-    // Kimin çıktığını bul (Önceki listede var ama şimdikinde yoksa çıkmıştır)
     const disconnectedUserIds = prevIds.filter(id => !onlineIds.includes(id));
 
     if (disconnectedUserIds.length > 0) {
       setUsers(prevUsers => prevUsers.map(user => {
         if (disconnectedUserIds.includes(user.id)) {
-          // Kullanıcıyı bulduk, lastSeen değerini "Şimdi" yapıyoruz
-          // Not: Backend'den gelen UserListItem içinde 'lastSeen' alanı olduğunu varsayıyorum.
-          // Eğer yoksa bunu UserListItem interface'ine eklemelisin.
           return { ...user, lastSeen: new Date().toISOString() };
         }
         return user;
       }));
     }
-    // Ref'i güncelle
     prevOnlineIdsRef.current = onlineIds;
   }, [onlineIds]);
 
@@ -359,20 +315,17 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     sendTyping(me.id);
   };
 
-  // --- DOSYA YÖNETİMİ VE ÖNİZLEME (TEK VE TEMİZ HALİ) ---
-
-  // 1. Dosya Seçildiğinde (Input'tan) -> Önizlemeye At
+  // --- DOSYA YÖNETİMİ ---
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "IMAGE" | "VIDEO" | "DOCUMENT") => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const previewUrl = URL.createObjectURL(file);
       setSelectedFile({ file, type, previewUrl });
-      setPlusMenuOpen(false); // Menüyü kapat
+      setPlusMenuOpen(false);
     }
-    e.target.value = ""; // Inputu sıfırla ki aynı dosyayı tekrar seçebilelim
+    e.target.value = "";
   };
 
-  // 2. Kamera ile Fotoğraf Çekildiğinde -> Önizlemeye At
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -384,7 +337,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
         canvas.toBlob((blob) => {
           if (blob) {
-            // Blob'u File objesine çeviriyoruz
             const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: "image/jpeg" });
             const previewUrl = URL.createObjectURL(file);
             setSelectedFile({ file, type: "IMAGE", previewUrl });
@@ -395,44 +347,28 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     }
   };
 
-  // 3. Dosyayı Sunucuya Yükle ve Gönder (Modal içindeki 'Gönder' butonu)
   const handleSendFile = async () => {
     if (!selectedFile || !selectedConversation) return;
-
     setIsUploading(true);
-
     try {
       let fileToUpload = selectedFile.file;
-
-      // Resim ise Sıkıştır
       if (selectedFile.type === "IMAGE") {
         try {
           const compressedBlob = await compressImage(selectedFile.file, "SD");
-          // Blob'u tekrar File'a çevir (Cloudinary için isim korumak adına)
           fileToUpload = new File([compressedBlob], selectedFile.file.name, { type: selectedFile.file.type });
         } catch (e) { console.log("Sıkıştırma atlandı", e); }
       }
-
-      // Cloudinary'ye Yükle
       const mediaUrl = await uploadMedia(fileToUpload);
-
-      // Mesaj İçeriğini Oluştur: TYPE::URL::FILENAME::SIZE::CAPTION
       const fileSizeMB = (selectedFile.file.size / (1024 * 1024)).toFixed(2) + " MB";
-      // Belge değilse boyutu gizleyebiliriz ama şimdilik gönderelim
       const contentString = `${selectedFile.type}::${mediaUrl}::${selectedFile.file.name}::${fileSizeMB}::${fileCaption}`;
-
-      // Mesajı Gönder
       sendMessage({
         conversationId: selectedConversation.id,
         senderId: me.id,
         content: contentString
       });
-
-      // Temizlik
       setSelectedFile(null);
       setFileCaption("");
       setIsUploading(false);
-
     } catch (error) {
       console.error("Yükleme hatası:", error);
       setIsUploading(false);
@@ -548,21 +484,15 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     }
   }, [messages]);
 
-  // ✅ KULLANILMAYAN DEĞİŞKEN HATASI DÜZELTİLDİ
-  const handleUpdateMe = (updated: MeResponse) => {
-    setCurrentUser(updated);
-  };
+  const handleUpdateMe = (updated: MeResponse) => { setCurrentUser(updated); };
 
-  // ✅ KULLANILMAYAN DEĞİŞKEN HATASI DÜZELTİLDİ
   const handleContactClick = async () => {
     if (!peer) return;
     setContactSidebarOpen(true);
     try {
       const data = await getUserById(peer.id);
       setContactInfo(data);
-    } catch (error) {
-      console.error("Kullanıcı detayı çekilemedi", error);
-    }
+    } catch (error) { console.error("Kullanıcı detayı çekilemedi", error); }
   };
 
   useEffect(() => {
@@ -574,9 +504,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   useEffect(() => {
     if (selectedConversation) {
       if (!isMobile) {
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 100);
+        setTimeout(() => { inputRef.current?.focus(); }, 100);
       }
     }
   }, [selectedConversation, isMobile]);
@@ -586,6 +514,36 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       setShowSetupModal(true);
     }
   }, [me]);
+
+  // DUYURU & KANAL LOGIC
+  useEffect(() => {
+    if (activeTab === "CHANNELS") {
+      loadAnnouncements();
+    }
+  }, [activeTab]);
+
+  const loadAnnouncements = async () => {
+    try {
+      const data = await getAnnouncements();
+      setAnnouncements(data);
+    } catch (error) { console.error("Duyurular yüklenemedi", error); }
+  };
+
+  const handleReaction = async (announcementId: number, emoji: string) => {
+    try {
+      await reactToAnnouncement(announcementId, me.id, emoji);
+      loadAnnouncements();
+    } catch (error) { console.error(error); }
+  };
+
+  const handlePostAnnouncement = async () => {
+    if (!channelMessage.trim()) return;
+    try {
+      await postAnnouncement(channelMessage, null, me.id);
+      setChannelMessage("");
+      loadAnnouncements();
+    } catch (error) { alert("Yetkiniz yok veya hata oluştu."); }
+  };
 
   // --- Sidebar Logic ---
   const peer = (() => {
@@ -603,14 +561,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   let lastSeenText: string | null = null;
 
   if (peer) {
-    // Peer objesini users state'inden bulalım (Çünkü güncel lastSeen orada)
     const currentPeerUser = users.find(u => u.id === peer.id);
-
     if (currentPeerUser && currentPeerUser.lastSeen) {
-      // Eğer kullanıcının lastSeen verisi varsa onu kullan (Daha doğru olan bu)
       lastSeenText = "Son görülme " + formatTime(currentPeerUser.lastSeen);
     } else {
-      // Yoksa (eski usul) son mesaja bak
       const peerMessages = messages.filter((m) => m.senderId === peer.id);
       if (peerMessages.length > 0) {
         const latest = peerMessages[peerMessages.length - 1];
@@ -640,7 +594,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         lastMessageTime: lastMessage ? formatTime(lastMessage.createdAt) : "",
         unreadCount: convMessages.filter((m) => m.senderId !== me.id && m.status !== "SEEN").length,
         lastMessageDate: lastMessage ? new Date(lastMessage.createdAt).getTime() : 0,
-        isOnline: onlineIds.includes(user.id) // ✅ isOnline EKLENDİ
+        isOnline: onlineIds.includes(user.id)
       };
     })
     .sort((a, b) => b.lastMessageDate - a.lastMessageDate);
@@ -649,156 +603,45 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "Segoe UI, sans-serif", background: "linear-gradient(180deg, #C6A7FF 0%, #9B8CFF 45%, #6F79FF 100%)" }}>
 
-      {/* 1. ÖNİZLEME MODALI (VIVORIA TASARIM DİLİNE UYGUN) */}
+      {/* 1. ÖNİZLEME MODALI */}
       {selectedFile && (
         <div style={{
           position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-          // Siyah yerine senin gradient tonlarının çok açık ve transparan hali
-          backgroundColor: "rgba(245, 243, 255, 0.95)",
-          backdropFilter: "blur(12px)", // Arkadaki sohbeti buzlu cam gibi flulaştırır
-          zIndex: 5000, display: "flex", flexDirection: "column",
-          animation: "fadeIn 0.2s ease-out"
+          backgroundColor: "rgba(245, 243, 255, 0.95)", backdropFilter: "blur(12px)",
+          zIndex: 5000, display: "flex", flexDirection: "column", animation: "fadeIn 0.2s ease-out"
         }}>
-
-          {/* Üst Bar: Başlık ve Kapat */}
-          <div style={{
-            padding: "20px 30px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            background: "linear-gradient(90deg, rgba(111, 121, 255, 0.05), rgba(155, 140, 255, 0.05))"
-          }}>
-            <h3 style={{ margin: 0, color: "#3E3663", fontSize: "18px", fontWeight: "700" }}>
-              Önizleme
-            </h3>
-            <button
-              onClick={() => setSelectedFile(null)}
-              style={{
-                background: "#EAE6FF", // Buton arka planı
-                border: "none",
-                color: "#6F79FF", // İkon rengi
-                width: "40px", height: "40px",
-                borderRadius: "50%",
-                cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "18px",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#DDD6FF"}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#EAE6FF"}
-            >
+          <div style={{ padding: "20px 30px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "linear-gradient(90deg, rgba(111, 121, 255, 0.05), rgba(155, 140, 255, 0.05))" }}>
+            <h3 style={{ margin: 0, color: "#3E3663", fontSize: "18px", fontWeight: "700" }}>Önizleme</h3>
+            <button onClick={() => setSelectedFile(null)} style={{ background: "#EAE6FF", border: "none", color: "#6F79FF", width: "40px", height: "40px", borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>
               <FontAwesomeIcon icon={faTimes} />
             </button>
           </div>
-
-          {/* Orta Alan: Medya Gösterimi */}
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{
-              position: "relative",
-              padding: "10px",
-              backgroundColor: "white",
-              borderRadius: "24px",
-              boxShadow: "0 20px 50px rgba(111, 121, 255, 0.25)", // Morumsu yumuşak gölge
-              maxWidth: "90%",
-              maxHeight: "80vh",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center"
-            }}>
-
+            <div style={{ position: "relative", padding: "10px", backgroundColor: "white", borderRadius: "24px", boxShadow: "0 20px 50px rgba(111, 121, 255, 0.25)", maxWidth: "90%", maxHeight: "80vh", display: "flex", flexDirection: "column", alignItems: "center" }}>
               {selectedFile.type === "IMAGE" ? (
-                <img
-                  src={selectedFile.previewUrl}
-                  style={{
-                    maxHeight: "60vh",
-                    maxWidth: "100%",
-                    borderRadius: "16px",
-                    display: "block"
-                  }}
-                />
+                <img src={selectedFile.previewUrl} style={{ maxHeight: "60vh", maxWidth: "100%", borderRadius: "16px", display: "block" }} />
               ) : selectedFile.type === "VIDEO" ? (
-                <video
-                  src={selectedFile.previewUrl}
-                  controls
-                  style={{
-                    maxHeight: "60vh",
-                    maxWidth: "100%",
-                    borderRadius: "16px",
-                    display: "block"
-                  }}
-                />
+                <video src={selectedFile.previewUrl} controls style={{ maxHeight: "60vh", maxWidth: "100%", borderRadius: "16px", display: "block" }} />
               ) : (
                 <div style={{ padding: "40px 60px", textAlign: "center", color: "#3E3663" }}>
-                  <div style={{
-                    width: "100px", height: "100px", margin: "0 auto 20px auto",
-                    backgroundColor: "#FFEBEE", borderRadius: "50%",
-                    display: "flex", alignItems: "center", justifyContent: "center"
-                  }}>
+                  <div style={{ width: "100px", height: "100px", margin: "0 auto 20px auto", backgroundColor: "#FFEBEE", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <FontAwesomeIcon icon={faFilePdf} style={{ fontSize: "50px", color: "#FF5252" }} />
                   </div>
                   <div style={{ fontSize: "22px", fontWeight: "bold", marginBottom: "8px" }}>{selectedFile.file.name}</div>
-                  <div style={{ fontSize: "15px", color: "#9B95C9" }}>
-                    {(selectedFile.file.size / (1024 * 1024)).toFixed(2)} MB
-                  </div>
+                  <div style={{ fontSize: "15px", color: "#9B95C9" }}>{(selectedFile.file.size / (1024 * 1024)).toFixed(2)} MB</div>
                 </div>
               )}
             </div>
           </div>
-
-          {/* Alt Bar: Caption ve Gönder */}
-          <div style={{
-            padding: "20px",
-            backgroundColor: "white", // Temiz beyaz zemin
-            display: "flex",
-            gap: "15px",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 -4px 20px rgba(0,0,0,0.03)" // Üstten hafif gölge
-          }}>
-            <input
-              type="text"
-              placeholder="Bir açıklama ekleyin..."
-              value={fileCaption}
-              onChange={(e) => setFileCaption(e.target.value)}
-              style={{
-                flex: 1,
-                maxWidth: "600px",
-                padding: "14px 24px",
-                borderRadius: "30px",
-                border: "2px solid #EAE6FF", // Hafif mor çerçeve
-                backgroundColor: "#F9F8FF",
-                color: "#3E3663",
-                fontSize: "16px",
-                outline: "none",
-                transition: "border-color 0.2s"
-              }}
-              onFocus={(e) => e.target.style.borderColor = "#9B8CFF"}
-              onBlur={(e) => e.target.style.borderColor = "#EAE6FF"}
-            />
-
-            <button
-              onClick={handleSendFile}
-              disabled={isUploading}
-              style={{
-                width: "54px", height: "54px", borderRadius: "50%",
-                background: "linear-gradient(135deg, #6F79FF 0%, #9B8CFF 100%)", // Uygulamanın ana gradienti
-                color: "white", border: "none", fontSize: "20px",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: isUploading ? "not-allowed" : "pointer",
-                opacity: isUploading ? 0.7 : 1,
-                boxShadow: "0 4px 15px rgba(111, 121, 255, 0.4)", // Buton parlaması
-                transition: "transform 0.2s"
-              }}
-              onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.95)"}
-              onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
-            >
+          <div style={{ padding: "20px", backgroundColor: "white", display: "flex", gap: "15px", alignItems: "center", justifyContent: "center", boxShadow: "0 -4px 20px rgba(0,0,0,0.03)" }}>
+            <input type="text" placeholder="Bir açıklama ekleyin..." value={fileCaption} onChange={(e) => setFileCaption(e.target.value)} style={{ flex: 1, maxWidth: "600px", padding: "14px 24px", borderRadius: "30px", border: "2px solid #EAE6FF", backgroundColor: "#F9F8FF", color: "#3E3663", fontSize: "16px", outline: "none" }} />
+            <button onClick={handleSendFile} disabled={isUploading} style={{ width: "54px", height: "54px", borderRadius: "50%", background: "linear-gradient(135deg, #6F79FF 0%, #9B8CFF 100%)", color: "white", border: "none", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: isUploading ? "not-allowed" : "pointer", opacity: isUploading ? 0.7 : 1 }}>
               {isUploading ? <FontAwesomeIcon icon={faSpinner} spin /> : <FontAwesomeIcon icon={faPaperPlane} style={{ marginLeft: "-2px" }} />}
             </button>
           </div>
         </div>
       )}
 
-      {/* --- Lightbox --- */}
       {viewingImage && (
         <div style={{ position: "fixed", zIndex: 3000, top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setViewingImage(null)}>
           <img src={viewingImage} style={{ maxHeight: "85%", maxWidth: "85%", borderRadius: 10 }} />
@@ -807,170 +650,192 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       )}
 
       {showSetupModal && <ProfileSetupModal onComplete={(updated) => { setCurrentUser(updated); setShowSetupModal(false); }} />}
-
-      {/* ✅ UNUSED VAR HATASI ÇÖZÜLDÜ: Props olarak geçildi */}
       <ProfileSidebar isOpen={isProfileSidebarOpen} onClose={() => setProfileSidebarOpen(false)} me={currentUser} onUpdateMe={handleUpdateMe} onViewImage={setViewingImage} />
       <ContactInfoSidebar isOpen={contactSidebarOpen} onClose={() => setContactSidebarOpen(false)} user={contactInfo} onViewImage={setViewingImage} lastSeenText={isPeerOnline ? "Çevrimiçi" : (lastSeenText ?? "")} />
 
-      {/* SOL PANEL (Chat Listesi) */}
-      <div style={{ width: isMobile ? "100%" : 300, display: isMobile && selectedConversation ? "none" : "flex", borderRight: isMobile ? "none" : "1px solid #DDD6FF", backgroundColor: "#F5F3FF", padding: "12px 14px", flexDirection: "column", overflowY: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #EAE6FF" }}>
-          <div onClick={() => setProfileSidebarOpen(true)} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1, padding: "8px", borderRadius: "12px" }}>
-            <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "#DDD6FF", backgroundImage: currentUser.profilePictureUrl ? `url(${currentUser.profilePictureUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", color: "#6F79FF", fontWeight: "bold", border: "2px solid white", flexShrink: 0 }}>
-              {!currentUser.profilePictureUrl && currentUser.displayName.charAt(0).toUpperCase()}
-            </div>
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#3E3663" }}>Profilim</span>
-          </div>
+      {/* --- SOL PANEL (Sohbet Listesi) --- */}
+      <div style={{ width: isMobile ? "100%" : 350, display: isMobile && selectedConversation ? "none" : "flex", flexDirection: "column", borderRight: "1px solid #DDD6FF", backgroundColor: "#F5F3FF" }}>
+        
+        {/* Profil Header */}
+        <div style={{ padding: "15px", borderBottom: "1px solid #EAE6FF", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+           <div onClick={() => setProfileSidebarOpen(true)} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+             <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "#DDD6FF", backgroundImage: currentUser.profilePictureUrl ? `url(${currentUser.profilePictureUrl})` : "none", backgroundSize: "cover", display: "flex", alignItems: "center", justifyContent: "center", color: "#6F79FF", fontWeight: "bold", border: "2px solid white" }}>
+               {!currentUser.profilePictureUrl && currentUser.displayName.charAt(0).toUpperCase()}
+             </div>
+             <span style={{ fontSize: 16, fontWeight: 700, color: "#3E3663" }}>Profilim</span>
+           </div>
         </div>
-        <h3 style={{ marginTop: 5, marginBottom: 15, color: "#3E3663", paddingLeft: 6 }}>Sohbetler</h3>
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {sidebarItems.map(({ user, isOnline, lastMessageText, lastMessageTime, unreadCount }) => (
-            <li key={user.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "10px 12px", borderRadius: 14, backgroundColor: "#FFFFFF", cursor: "pointer", boxShadow: "0 4px 10px rgba(0,0,0,0.08)" }} onClick={() => openConversationWith(user.id)}>
-              <div style={{ position: "relative" }}>
-                <div style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: "#EAE6FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", color: "#6F79FF", fontWeight: "600", backgroundImage: user.profilePictureUrl ? `url(${user.profilePictureUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center" }}>
-                  {!user.profilePictureUrl && user.displayName.charAt(0).toUpperCase()}
-                </div>
-                <span style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, backgroundColor: isOnline ? "#44b700" : "#CCC", borderRadius: "50%", border: "2px solid white" }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, color: "#3E3663" }}>{user.displayName}</div>
-                <div style={{ fontSize: 11, color: "#9B95C9", marginTop: 2, display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>{lastMessageText}</span>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    {lastMessageTime && <span>{lastMessageTime}</span>}
-                    {unreadCount > 0 && <span style={{ minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#6F79FF", color: "white", fontSize: 11, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{unreadCount}</span>}
+
+        {/* Sekme Butonları */}
+        <div style={{ display: "flex", gap: "10px", padding: "10px 10px 15px 10px" }}>
+          <button onClick={() => { setActiveTab("CHATS"); setSelectedConversation(null); }} style={{ flex: 1, padding: "8px", borderRadius: "20px", border: "none", cursor: "pointer", fontWeight: "600", fontSize: "14px", transition: "all 0.2s", backgroundColor: activeTab === "CHATS" ? "#6F79FF" : "rgba(111, 121, 255, 0.1)", color: activeTab === "CHATS" ? "white" : "#6F79FF" }}>Sohbetler</button>
+          <button onClick={() => { setActiveTab("CHANNELS"); setSelectedConversation(null); }} style={{ flex: 1, padding: "8px", borderRadius: "20px", border: "none", cursor: "pointer", fontWeight: "600", fontSize: "14px", transition: "all 0.2s", backgroundColor: activeTab === "CHANNELS" ? "#6F79FF" : "rgba(111, 121, 255, 0.1)", color: activeTab === "CHANNELS" ? "white" : "#6F79FF" }}>Kanallar</button>
+        </div>
+
+        {/* Liste İçeriği */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 10px" }}>
+          {activeTab === "CHATS" && (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {sidebarItems.map(({ user, isOnline, lastMessageText, unreadCount }) => (
+                <li key={user.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "10px 12px", borderRadius: 14, backgroundColor: "#FFFFFF", cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.03)" }} onClick={() => openConversationWith(user.id)}>
+                  <div style={{ position: "relative" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: "50%", backgroundColor: "#EAE6FF", backgroundImage: user.profilePictureUrl ? `url(${user.profilePictureUrl})` : "none", backgroundSize: "cover", display: "flex", alignItems: "center", justifyContent: "center", color: "#6F79FF", fontWeight: "bold" }}>{!user.profilePictureUrl && user.displayName[0]}</div>
+                    {isOnline && <div style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, background: "#44b700", borderRadius: "50%", border: "2px solid white" }}></div>}
                   </div>
-                </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: "#3E3663" }}>{user.displayName}</div>
+                    <div style={{ fontSize: 11, color: "#9B95C9", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lastMessageText}</div>
+                  </div>
+                  {unreadCount > 0 && <span style={{ minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#6F79FF", color: "white", fontSize: 11, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{unreadCount}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {activeTab === "CHANNELS" && (
+            <div onClick={() => setSelectedConversation({ id: -999 } as any)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px", backgroundColor: "white", borderRadius: "14px", cursor: "pointer", boxShadow: "0 4px 10px rgba(0,0,0,0.08)" }}>
+              <div style={{ width: 45, height: 45, borderRadius: "50%", background: "linear-gradient(135deg, #FF9800, #FF5722)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "20px" }}>📢</div>
+              <div>
+                <div style={{ fontWeight: "700", color: "#3E3663" }}>Vivoria Duyurular</div>
+                <div style={{ fontSize: "12px", color: "#9B95C9" }}>Resmi güncellemeler</div>
               </div>
-            </li>
-          ))}
-        </ul>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* SAĞ PANEL (Chat Ekranı) */}
+      {/* --- SAĞ PANEL --- */}
       <div style={{ flex: 1, display: isMobile && !selectedConversation ? "none" : "flex", flexDirection: "column", background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)", height: "100vh" }}>
-        {/* Header */}
-        <div style={{ height: "65px", background: "linear-gradient(90deg, #6F79FF, #9B8CFF)", color: "white", padding: "0 15px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, boxShadow: "0 2px 5px rgba(0,0,0,0.1)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, overflow: "hidden" }}>
-            {isMobile && <button onClick={() => setSelectedConversation(null)} style={{ background: "transparent", border: "none", color: "white", fontSize: "26px", cursor: "pointer", padding: "0 8px 0 0" }}>‹</button>}
-            {peer ? (
-              // ✅ UNUSED VAR HATASI ÇÖZÜLDÜ: handleContactClick burada çağrıldı
-              <div onClick={handleContactClick} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }}>
-                <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: "16px", backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", border: "1.5px solid rgba(255,255,255,0.6)" }}>
-                  {!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div style={{ fontWeight: 600, fontSize: 16 }}>{peer.name}</div>
-                  <div style={{ fontSize: 13, opacity: 0.95 }}>{isPeerOnline ? "Çevrimiçi" : lastSeenText ?? ""}</div>
-                </div>
-              </div>
-            ) : <strong style={{ fontSize: "18px", marginLeft: "5px" }}>Sohbet Seç</strong>}
-          </div>
-          <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", padding: "8px 16px", borderRadius: 20, cursor: "pointer", fontWeight: 600, fontSize: "13px" }}>Çıkış</button>
-        </div>
-
-        {/* Mesaj Listesi */}
-        <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
-          {isLoadingHistory && <div style={{ textAlign: "center", padding: "10px", color: "#6F79FF", fontSize: "13px" }}>⏳ Eski mesajlar yükleniyor...</div>}
-          <div style={{ maxWidth: 1480, margin: "0 auto" }}>
-            {[...messages].sort((a, b) => a.id - b.id).map((m, index) => {
-              const isMine = m.senderId === me.id;
-              const time = formatTime(m.createdAt);
-              let showDateSeparator = index === 0;
-              if (index > 0) {
-                const prevDate = new Date(messages[index - 1].createdAt).toDateString();
-                const currDate = new Date(m.createdAt).toDateString();
-                if (prevDate !== currDate) showDateSeparator = true;
-              }
-
-              return (
-                <div key={m.id} style={{ display: "flex", flexDirection: "column" }}>
-                  {showDateSeparator && (
-                    <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px 0" }}>
-                      <div style={{ backgroundColor: "#EAE6FF", color: "#6F79FF", padding: "6px 14px", borderRadius: "12px", fontSize: "12px", fontWeight: 600 }}>{formatDateLabel(m.createdAt)}</div>
+        
+        {/* DUYURU EKRANI */}
+        {selectedConversation && selectedConversation.id === -999 ? (
+          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+            <div style={{ height: "65px", background: "white", padding: "0 20px", display: "flex", alignItems: "center", borderBottom: "1px solid #ddd", gap: 15 }}>
+              {isMobile && <button onClick={() => setSelectedConversation(null)} style={{border:"none", background:"transparent", fontSize:"24px"}}>‹</button>}
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#FF9800", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>📢</div>
+              <div style={{ fontWeight: "bold", fontSize: "18px", color: "#3E3663" }}>Vivoria Duyurular</div>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px", background: "#E0E0E0" }}>
+              {announcements.map((ann) => (
+                <div key={ann.id} style={{ maxWidth: "600px", margin: "0 auto 20px auto", backgroundColor: "white", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+                  {ann.mediaUrl && <img src={ann.mediaUrl} style={{ width: "100%", maxHeight: "300px", objectFit: "cover" }} />}
+                  <div style={{ padding: "12px 16px" }}>
+                    <p style={{ whiteSpace: "pre-wrap", color: "#111", fontSize: "15px", lineHeight: "1.4", margin: "0 0 10px 0" }}>{ann.content}</p>
+                    <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                      {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => {
+                        const count = ann.reactions?.filter((r: any) => r.emoji === emoji).length || 0;
+                        return (
+                          <button key={emoji} onClick={() => handleReaction(ann.id, emoji)} style={{ background: count > 0 ? "#E7F3FF" : "#F0F2F5", border: count > 0 ? "1px solid #007BFF" : "none", borderRadius: "12px", padding: "4px 8px", cursor: "pointer", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
+                            {emoji} {count > 0 && <span style={{ fontWeight: "bold", color: "#007BFF" }}>{count}</span>}
+                          </button>
+                        )
+                      })}
                     </div>
-                  )}
-                  <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 12 }}>
-                    <div style={{
-                      backgroundColor: isMine ? "#5865F2" : "#F3F4F6", // Balon rengi
-                      color: isMine ? "white" : "#3E3663",
-                      borderRadius: 16, borderTopRightRadius: isMine ? 0 : 16, borderTopLeftRadius: !isMine ? 0 : 16,
-                      padding: "4px", // Padding'i azalttık (Card yapısı için)
-                      maxWidth: "70%", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", position: "relative"
-                    }}>
+                    <div style={{ textAlign: "right", fontSize: "11px", color: "#888", marginTop: "5px" }}>{new Date(ann.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {me.role === "ADMIN" && (
+              <div style={{ padding: "10px", background: "white", display: "flex", gap: "10px" }}>
+                <input value={channelMessage} onChange={(e) => setChannelMessage(e.target.value)} placeholder="Bir duyuru yayınla..." style={{ flex: 1, padding: "10px", borderRadius: "20px", border: "1px solid #ddd" }} />
+                <button onClick={handlePostAnnouncement} style={{ background: "#6F79FF", color: "white", border: "none", borderRadius: "50%", width: 40, height: 40, cursor: "pointer" }}><FontAwesomeIcon icon={faPaperPlane} /></button>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* NORMAL SOHBET EKRANI */
+          <>
+            <div style={{ height: "65px", background: "linear-gradient(90deg, #6F79FF, #9B8CFF)", color: "white", padding: "0 15px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, boxShadow: "0 2px 5px rgba(0,0,0,0.1)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, flex: 1, overflow: "hidden" }}>
+                {isMobile && <button onClick={() => setSelectedConversation(null)} style={{ background: "transparent", border: "none", color: "white", fontSize: "26px", cursor: "pointer", padding: "0 8px 0 0" }}>‹</button>}
+                {peer ? (
+                  <div onClick={handleContactClick} style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", flex: 1 }}>
+                    <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: "16px", backgroundImage: peer.profilePictureUrl ? `url(${peer.profilePictureUrl})` : "none", backgroundSize: "cover", backgroundPosition: "center", border: "1.5px solid rgba(255,255,255,0.6)" }}>{!peer.profilePictureUrl && peer.name.charAt(0).toUpperCase()}</div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      <div style={{ fontWeight: 600, fontSize: 16 }}>{peer.name}</div>
+                      <div style={{ fontSize: 13, opacity: 0.95 }}>{isPeerOnline ? "Çevrimiçi" : lastSeenText ?? ""}</div>
+                    </div>
+                  </div>
+                ) : <strong style={{ fontSize: "18px", marginLeft: "5px" }}>Sohbet Seç</strong>}
+              </div>
+              <button onClick={onLogout} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", padding: "8px 16px", borderRadius: 20, cursor: "pointer", fontWeight: 600, fontSize: "13px" }}>Çıkış</button>
+            </div>
 
-                      {/* --- MESAJ İÇERİĞİ RENDER (WhatsApp Style) --- */}
-                      {m.content.startsWith("AUDIO::") ? (
-                        <div style={{ padding: "8px" }}>
-                          <AudioPlayer
-                            audioUrl={m.content.replace("AUDIO::", "")}
-                            isMine={isMine}
-                            senderProfilePic={isMine ? me.profilePictureUrl : peer?.profilePictureUrl}
-                          />
-                        </div>
-                      ) : m.content.startsWith("IMAGE::") ? (
-                        (() => {
-                          const parts = m.content.split("::");
-                          const url = parts[1];
-                          const caption = parts[4] || "";
-                          return (
-                            <div style={{ display: "flex", flexDirection: "column" }}>
-                              <img src={url} onClick={() => setViewingImage(url)} style={{ borderRadius: "12px", maxWidth: "100%", maxHeight: "350px", objectFit: "cover", cursor: "pointer" }} />
-                              {caption && <div style={{ padding: "6px 8px 0 8px", fontSize: "14px" }}>{caption}</div>}
-                            </div>
-                          );
-                        })()
-                      ) : m.content.startsWith("VIDEO::") ? (
-                        (() => {
-                          const parts = m.content.split("::");
-                          const url = parts[1];
-                          const caption = parts[4] || "";
-                          return (
-                            <div style={{ display: "flex", flexDirection: "column" }}>
-                              <video src={url} controls style={{ borderRadius: "12px", maxWidth: "100%", maxHeight: "350px" }} />
-                              {caption && <div style={{ padding: "6px 8px 0 8px", fontSize: "14px" }}>{caption}</div>}
-                            </div>
-                          );
-                        })()
-                      ) /* 4. BELGE MESAJI */
-                        : m.content.startsWith("DOCUMENT::") ? (
+            {/* --- BURAYI KOPYALA VE MEVCUT 'Mesaj Listesi' DİV'İ İLE DEĞİŞTİR --- */}
+          <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, padding: "16px 24px", overflowY: "auto" }}>
+            {isLoadingHistory && <div style={{ textAlign: "center", padding: "10px", color: "#6F79FF", fontSize: "13px" }}>⏳ Eski mesajlar yükleniyor...</div>}
+            
+            <div style={{ maxWidth: 1480, margin: "0 auto" }}>
+              {[...messages].sort((a, b) => a.id - b.id).map((m, index) => {
+                const isMine = m.senderId === me.id;
+                const time = formatTime(m.createdAt);
+                let showDateSeparator = index === 0;
+                
+                if (index > 0) {
+                  const prevDate = new Date(messages[index - 1].createdAt).toDateString();
+                  const currDate = new Date(m.createdAt).toDateString();
+                  if (prevDate !== currDate) showDateSeparator = true;
+                }
+
+                return (
+                  <div key={m.id} style={{ display: "flex", flexDirection: "column" }}>
+                    {/* Tarih Ayırıcı */}
+                    {showDateSeparator && (
+                      <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 12px 0" }}>
+                        <div style={{ backgroundColor: "#EAE6FF", color: "#6F79FF", padding: "6px 14px", borderRadius: "12px", fontSize: "12px", fontWeight: 600 }}>{formatDateLabel(m.createdAt)}</div>
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: 12 }}>
+                      <div style={{ 
+                        backgroundColor: isMine ? "#5865F2" : "#F3F4F6", 
+                        color: isMine ? "white" : "#3E3663", 
+                        borderRadius: 16, 
+                        borderTopRightRadius: isMine ? 0 : 16, 
+                        borderTopLeftRadius: !isMine ? 0 : 16, 
+                        padding: "4px", 
+                        maxWidth: "70%", 
+                        boxShadow: "0 4px 10px rgba(0,0,0,0.1)", 
+                        position: "relative" 
+                      }}>
+                        
+                        {/* MESAJ TİPİNE GÖRE İÇERİK */}
+                        {m.content.startsWith("AUDIO::") ? (
+                          <div style={{ padding: "8px" }}>
+                            <AudioPlayer audioUrl={m.content.replace("AUDIO::", "")} isMine={isMine} senderProfilePic={isMine ? me.profilePictureUrl : peer?.profilePictureUrl} />
+                          </div>
+                        ) : m.content.startsWith("IMAGE::") ? (
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <img src={m.content.split("::")[1]} onClick={() => setViewingImage(m.content.split("::")[1])} style={{ borderRadius: "12px", maxWidth: "100%", maxHeight: "350px", objectFit: "cover", cursor: "pointer" }} />
+                          </div>
+                        ) : m.content.startsWith("VIDEO::") ? (
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <video src={m.content.split("::")[1]} controls style={{ borderRadius: "12px", maxWidth: "100%", maxHeight: "350px" }} />
+                          </div>
+                        ) : m.content.startsWith("DOCUMENT::") ? (
+                          // ✅ BELGE GÖRÜNÜMÜ (faDownload hatasını çözer)
                           (() => {
                             const parts = m.content.split("::");
-                            let url = parts[1];
+                            const url = parts[1];
                             const fileName = parts[2] || "Dosya";
                             const fileSize = parts[3] || "";
                             const isPdf = fileName.toLowerCase().endsWith(".pdf");
                             const thumb = isPdf ? url.replace(".pdf", ".jpg") : null;
-                            const downloadUrl = url;
 
                             return (
                               <div style={{ width: "260px", overflow: "hidden" }}>
                                 <div style={{ height: "140px", backgroundColor: "#E0E0E0", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", overflow: "hidden" }}>
                                   {thumb ? (
-                                    <img
-                                      src={thumb}
-                                      style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }}
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                        e.currentTarget.parentElement!.querySelector('.fallback-icon')!.removeAttribute('style');
-                                      }}
-                                    />
+                                    <img src={thumb} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.querySelector('.fallback-icon')!.removeAttribute('style'); }} />
                                   ) : null}
-
-                                  <FontAwesomeIcon
-                                    icon={faFileAlt}
-                                    className="fallback-icon"
-                                    style={{ fontSize: "50px", color: "#888", display: thumb ? 'none' : 'block' }}
-                                  />
-
+                                  
+                                  <FontAwesomeIcon icon={faFileAlt} className="fallback-icon" style={{ fontSize: "50px", color: "#888", display: thumb ? 'none' : 'block' }} />
+                                  
                                   <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", backgroundColor: "rgba(0,0,0,0.3)", borderRadius: "50%", width: "40px", height: "40px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    {/* ✅ GÜNCELLENMİŞ İNDİRME LİNKİ */}
-                                    <a href={downloadUrl} download={fileName} style={{ color: "white" }}>
-                                      <FontAwesomeIcon icon={faDownload} />
-                                    </a>
+                                    {/* ✅ İndirme İkonu Burada Kullanılıyor */}
+                                    <a href={url} download={fileName} style={{ color: "white" }}><FontAwesomeIcon icon={faDownload} /></a>
                                   </div>
                                 </div>
-                                {/* Alt kısım (Dosya adı vs.) aynı kalıyor... */}
                                 <div style={{ padding: "10px", backgroundColor: isMine ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.03)", display: "flex", alignItems: "center", gap: "10px", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}>
                                   <div style={{ fontSize: "24px", color: "#F15C6D" }}><FontAwesomeIcon icon={isPdf ? faFilePdf : faFileAlt} /></div>
                                   <div style={{ flex: 1, overflow: "hidden" }}>
@@ -982,138 +847,82 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                             );
                           })()
                         ) : (
+                          // NORMAL METİN MESAJI
                           <div style={{ padding: "8px 12px" }}>{m.content}</div>
                         )}
 
-                      <div style={{ textAlign: "right", fontSize: 11, padding: "0 8px 4px 0", color: isMine ? "rgba(255,255,255,0.7)" : "#9B95C9" }}>
-                        {time} {isMine && renderStatusTicks(m.status)}
+                        <div style={{ textAlign: "right", fontSize: 11, padding: "0 8px 4px 0", color: isMine ? "rgba(255,255,255,0.7)" : "#9B95C9" }}>
+                          {time} {isMine && renderStatusTicks(m.status)}
+                        </div>
                       </div>
                     </div>
                   </div>
+                );
+              })}
+
+              {/* ✅ YAZIYOR ANİMASYONU (typingUserId hatasını çözer) */}
+              <div style={{ padding: typingUserId === peer?.id ? "0 24px 16px 24px" : "0", opacity: typingUserId === peer?.id ? 1 : 0, transition: "all 0.5s ease", maxHeight: typingUserId === peer?.id ? 60 : 0, overflow: "hidden" }}>
+                <div style={{ backgroundColor: "#FFFFFF", padding: "10px 14px", borderRadius: 16, borderTopLeftRadius: 0, display: "inline-flex", width: "fit-content" }}>
+                  <div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div>
                 </div>
-              );
-            })}
-            <div style={{ padding: typingUserId === peer?.id ? "0 24px 16px 24px" : "0", opacity: typingUserId === peer?.id ? 1 : 0, transition: "all 0.5s ease", maxHeight: typingUserId === peer?.id ? 60 : 0, overflow: "hidden" }}>
-              <div style={{ backgroundColor: "#FFFFFF", padding: "10px 14px", borderRadius: 16, borderTopLeftRadius: 0, display: "inline-flex", width: "fit-content" }}>
-                <div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div>
               </div>
+              
+              <div ref={messagesEndRef} />
             </div>
-            <div ref={messagesEndRef} />
           </div>
-        </div>
 
-        {/* Input Bar */}
-        <div style={{ minHeight: "80px", padding: "0 20px 20px 20px", display: "flex", alignItems: "center", gap: 12, position: "relative", zIndex: 10 }}>
-          {/* Kamera Modalı */}
-          {showCameraModal && (
-            <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ position: "relative", width: "90%", maxWidth: "600px", borderRadius: "10px", overflow: "hidden" }}>
-                <video ref={videoRef} autoPlay playsInline style={{ width: "100%", display: "block" }} />
-                <canvas ref={canvasRef} style={{ display: "none" }} />
-              </div>
-              <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
-                <button onClick={stopCamera} style={{ padding: "10px 20px", borderRadius: "20px", border: "none", backgroundColor: "#FF4D4D", color: "white", cursor: "pointer", fontSize: "16px" }}><FontAwesomeIcon icon={faTimes} /> İptal</button>
-                <button onClick={capturePhoto} style={{ width: "60px", height: "60px", borderRadius: "50%", border: "4px solid white", backgroundColor: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><div style={{ width: "45px", height: "45px", borderRadius: "50%", backgroundColor: "white" }}></div></button>
-              </div>
-            </div>
-          )}
-
-          {isRecording ? (
-            <>
-              <button onClick={cancelRecording} style={{ background: "#FFFFFF", border: "none", color: "#FF4D4D", width: "50px", height: "50px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", cursor: "pointer", boxShadow: "0 4px 15px rgba(0,0,0,0.1)" }}><FontAwesomeIcon icon={faTrash} /></button>
-              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "#FFFFFF", borderRadius: 30, height: 50, boxShadow: "0 4px 15px rgba(0,0,0,0.05)" }}>
-                <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#FF4D4D", animation: "pulseRed 1s infinite" }} />
-                <span style={{ fontSize: "18px", color: "#6F79FF", fontWeight: "bold", fontFamily: "monospace" }}>{formatDuration(recordingDuration)}</span>
-              </div>
-              <button onClick={finishRecording} style={{ width: "50px", height: "50px", borderRadius: "50%", backgroundColor: "#00C853", color: "white", border: "none", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 15px rgba(0,200,83, 0.4)" }}><FontAwesomeIcon icon={faCheck} /></button>
-            </>
-          ) : (
-            <>
-              <input type="file" ref={documentInputRef} onChange={(e) => handleFileSelect(e, "DOCUMENT")} style={{ display: "none" }} accept=".pdf,.doc,.docx,.txt,.xls,.xlsx" />
-              <input type="file" ref={galleryInputRef} onChange={(e) => handleFileSelect(e, e.target.files?.[0].type.startsWith("video/") ? "VIDEO" : "IMAGE")} style={{ display: "none" }} accept="image/*,video/*" />
-
-              {/* Beyaz Input Kutusu */}
-              <div style={{ flex: 1, display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: "25px", padding: "5px 10px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", height: "50px", gap: "0px", position: "relative" }}>
-
-                {/* 1. EMOJI PANELİ (Açık ise göster) */}
-                {showEmojiPicker && (
-                  <div style={{ position: "absolute", bottom: "80px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "0px", boxShadow: "0 10px 30px rgba(0,,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "200px", animation: "popupMenuEnter 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)", transformOrigin: "bottom left" }}>
-                    <EmojiPicker
-                      onEmojiClick={onEmojiClick}
-                      autoFocusSearch={false}
-                      theme={Theme.LIGHT}
-                      emojiStyle={EmojiStyle.APPLE}
-                      width="100%"   // Genişliği %100 yap ki kutuya tam otursun
-                      height={400}   // Yüksekliği biraz kıstım, daha derli toplu durur
-                      skinTonesDisabled={true} // ✅ O şekilsiz sarı butonu tamamen kaldırır
-                      searchDisabled={false}   // Arama çubuğu kalsın
-                      previewConfig={{
-                        showPreview: false
-                      }}
-                    />
-                  </div>
-                )}
-                {isPlusMenuOpen && (
-                  <div style={{ position: "absolute", bottom: "80px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "15px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "200px", animation: "popupMenuEnter 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)", transformOrigin: "bottom left" }}>
-                    {[
-                      { icon: faFileAlt, label: "Belge", color: "#7F66FF", action: () => documentInputRef.current?.click() },
-                      { icon: faImages, label: "Fotoğraflar ve Videolar", color: "#007BFF", action: () => galleryInputRef.current?.click() },
-                      { icon: faCamera, label: "Kamera", color: "#FF4081", action: startCamera },
-                      { icon: faUser, label: "Kişi", color: "#009688", action: () => alert("Kişi yakında...") },
-                      { icon: faChartBar, label: "Anket", color: "#FFC107", action: () => alert("Anket yakında...") },
-                      { icon: faCalendarAlt, label: "Etkinlik", color: "#FF9800", action: () => alert("Etkinlik yakında...") },
-                      { icon: faStickyNote, label: "Yeni Çıkartma", color: "#4CAF50", action: () => alert("Çıkartma yakında...") },
-                    ].map((item, idx) => (
-                      <div key={idx} onClick={() => { item.action(); if (item.label !== "Kamera") setPlusMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", transition: "0.2s" }} onMouseEnter={(e) => e.currentTarget.style.opacity = "0.7"} onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>
-                        <div style={{ width: "35px", height: "35px", borderRadius: "50%", background: `linear-gradient(135deg, ${item.color}, ${item.color}88)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "14px" }}><FontAwesomeIcon icon={item.icon} /></div>
-                        <span style={{ fontSize: "14px", fontWeight: "600", color: "#3E3663" }}>{item.label}</span>
+            <div style={{ minHeight: "80px", padding: "0 20px 20px 20px", display: "flex", alignItems: "center", gap: 12, position: "relative", zIndex: 10 }}>
+              {showCameraModal && (
+                <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ position: "relative", width: "90%", maxWidth: "600px", borderRadius: "10px", overflow: "hidden" }}><video ref={videoRef} autoPlay playsInline style={{ width: "100%", display: "block" }} /><canvas ref={canvasRef} style={{ display: "none" }} /></div>
+                  <div style={{ display: "flex", gap: 20, marginTop: 20 }}><button onClick={stopCamera} style={{ padding: "10px 20px", borderRadius: "20px", border: "none", background: "#FF4D4D", color: "white" }}>İptal</button><button onClick={capturePhoto} style={{ width: "60px", height: "60px", borderRadius: "50%", border: "4px solid white", background: "transparent" }}></button></div>
+                </div>
+              )}
+              {isRecording ? (
+                <><button onClick={cancelRecording} style={{ background: "white", border: "none", color: "#FF4D4D", width: 50, height: 50, borderRadius: "50%" }}><FontAwesomeIcon icon={faTrash} /></button><div style={{ flex: 1, background: "white", borderRadius: 30, height: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>{formatDuration(recordingDuration)}</div><button onClick={finishRecording} style={{ background: "#00C853", color: "white", width: 50, height: 50, borderRadius: "50%", border: "none" }}><FontAwesomeIcon icon={faCheck} /></button></>
+              ) : (
+                <>
+                  <input type="file" ref={documentInputRef} onChange={(e) => handleFileSelect(e, "DOCUMENT")} style={{ display: "none" }} />
+                  <input type="file" ref={galleryInputRef} onChange={(e) => handleFileSelect(e, "IMAGE")} style={{ display: "none" }} />
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: "25px", padding: "5px 10px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", height: "50px", position: "relative" }}>
+                    
+                    {/* ✅ EMOJI PICKER BURADA */}
+                    {showEmojiPicker && (
+                      <div style={{ position: "absolute", bottom: "80px", left: "0", zIndex: 100 }}>
+                        <EmojiPicker onEmojiClick={onEmojiClick} autoFocusSearch={false} theme={Theme.LIGHT} emojiStyle={EmojiStyle.APPLE} width="100%" height={400} skinTonesDisabled={true} searchDisabled={false} previewConfig={{ showPreview: false }} />
                       </div>
-                    ))}
+                    )}
+
+                    {/* ✅ PLUS MENÜ (Hatalı Kodun Olduğu Yer Burasıydı, Geri Eklendi) */}
+                    {isPlusMenuOpen && (
+                      <div style={{ position: "absolute", bottom: "80px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "15px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "200px", animation: "popupMenuEnter 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)", transformOrigin: "bottom left" }}>
+                        {[
+                          { icon: faFileAlt, label: "Belge", color: "#7F66FF", action: () => documentInputRef.current?.click() },
+                          { icon: faImages, label: "Galeri", color: "#007BFF", action: () => galleryInputRef.current?.click() },
+                          { icon: faCamera, label: "Kamera", color: "#FF4081", action: startCamera },
+                          { icon: faUser, label: "Kişi", color: "#009688", action: () => alert("Kişi yakında...") },
+                          { icon: faChartBar, label: "Anket", color: "#FFC107", action: () => alert("Anket yakında...") },
+                          { icon: faCalendarAlt, label: "Etkinlik", color: "#FF9800", action: () => alert("Etkinlik yakında...") },
+                          { icon: faStickyNote, label: "Çıkartma", color: "#4CAF50", action: () => alert("Çıkartma yakında...") },
+                        ].map((item, idx) => (
+                          <div key={idx} onClick={() => { item.action(); if (item.label !== "Kamera") setPlusMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", transition: "0.2s" }} onMouseEnter={(e) => e.currentTarget.style.opacity = "0.7"} onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>
+                            <div style={{ width: "35px", height: "35px", borderRadius: "50%", background: `linear-gradient(135deg, ${item.color}, ${item.color}88)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "14px" }}><FontAwesomeIcon icon={item.icon} /></div>
+                            <span style={{ fontSize: "14px", fontWeight: "600", color: "#3E3663" }}>{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button onClick={() => { setPlusMenuOpen(!isPlusMenuOpen); setShowEmojiPicker(false); }} style={{ background: "transparent", border: "none", color: isPlusMenuOpen ? "#6F79FF" : "#9B95C9", fontSize: "20px", padding: "8px", cursor: "pointer", transform: isPlusMenuOpen ? "rotate(45deg)" : "rotate(0deg)", transition: "transform 0.2s" }}><FontAwesomeIcon icon={faPlus} /></button>
+                    <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setPlusMenuOpen(false); }} style={{ background: "transparent", border: "none", color: showEmojiPicker ? "#6F79FF" : "#9B95C9", fontSize: "20px", padding: "8px", cursor: "pointer" }}><FontAwesomeIcon icon={faSmile} /></button>
+                    <input ref={inputRef} style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "16px", color: "#3E3663", height: "100%", padding: "0 5px" }} value={newMessage} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSend()} placeholder="Bir mesaj yazın" />
                   </div>
-                )}
-                {/* 3. PLUS BUTONU */}
-                <button
-                  onClick={() => {
-                    setPlusMenuOpen(!isPlusMenuOpen);
-                    setShowEmojiPicker(false); // Plus açılırsa emojiyi kapat
-                  }}
-                  style={{ background: "transparent", border: "none", color: isPlusMenuOpen ? "#6F79FF" : "#9B95C9", fontSize: "20px", cursor: "pointer", padding: "8px", display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 0.2s", outline: "none", transform: isPlusMenuOpen ? "rotate(45deg)" : "rotate(0deg)" }}
-                >
-                  <FontAwesomeIcon icon={faPlus} />
-                </button>
-                {/* 4. YENİ EKLENEN: EMOJI BUTONU */}
-                <button
-                  onClick={() => {
-                    setShowEmojiPicker(!showEmojiPicker);
-                    setPlusMenuOpen(false); // Emoji açılırsa plus menüyü kapat
-                  }}
-                  style={{
-                    background: "transparent", border: "none",
-                    color: showEmojiPicker ? "#6F79FF" : "#9B95C9", // Aktifse mor, değilse gri
-                    fontSize: "20px", cursor: "pointer", padding: "8px",
-                    display: "flex", alignItems: "center", justifyContent: "center", outline: "none"
-                  }}
-                >
-                  <FontAwesomeIcon icon={faSmile} />
-                </button>
-                {/* 5. INPUT ALANI */}
-                <input
-                  ref={inputRef}
-                  style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "16px", color: "#3E3663", height: "100%", padding: "0 5px" }}
-                  value={newMessage}
-                  onChange={handleInputChange}
-                  onClick={() => {
-                    setPlusMenuOpen(false);
-                    // setShowEmojiPicker(false); // Kullanıcı yazarken emoji kapanmasın istersen burayı yorum satırı yap
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  placeholder="Bir mesaj yazın"
-                />
-              </div>
-              <button onClick={() => { if (newMessage.trim()) handleSend(); else startRecording(); }} style={{ width: "50px", height: "50px", borderRadius: "50%", backgroundColor: "#6F79FF", color: "white", border: "none", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.2s ease", boxShadow: "0 4px 15px rgba(111, 121, 255, 0.4)", outline: "none", flexShrink: 0 }}><FontAwesomeIcon icon={newMessage.trim() ? faPaperPlane : faMicrophone} /></button>
-            </>
-          )}
-        </div>
+                  <button onClick={() => { if (newMessage.trim()) handleSend(); else startRecording(); }} style={{ width: "50px", height: "50px", borderRadius: "50%", backgroundColor: "#6F79FF", color: "white", border: "none", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><FontAwesomeIcon icon={newMessage.trim() ? faPaperPlane : faMicrophone} /></button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

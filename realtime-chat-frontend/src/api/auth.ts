@@ -7,7 +7,10 @@ export interface MeResponse {
   phoneNumber: string;
   profilePictureUrl?: string;
   about?: string;
-  isActivated: boolean; // ✅ YENİ
+  isActivated: boolean;
+  // ✅ EKSİK ALANLAR EKLENDİ
+  isPhoneNumberVisible: boolean;
+  role: "ADMIN" | "USER";
 }
 
 interface ActivationLoginResponse {
@@ -17,7 +20,9 @@ interface ActivationLoginResponse {
   token: string;
   profilePictureUrl?: string;
   about?: string;
-  isActivated: boolean; // ✅ YENİ
+  isActivated: boolean;
+  // Backend bu alanları dönmüyorsa varsayılan atayacağız
+  role?: "ADMIN" | "USER"; 
 }
 
 export interface ActivationLoginRequest {
@@ -41,10 +46,13 @@ export const loginWithActivation = async (
     profilePictureUrl: data.profilePictureUrl,
     about: data.about,
     isActivated: data.isActivated,
+    // ✅ EKSİK ALANLARI VARSAYILAN OLARAK DOLDURDUK
+    isPhoneNumberVisible: false, 
+    role: data.role || "USER" 
   };
 };
 
-// 2. ✅ YENİ: Master Key Doğrulama Fonksiyonu
+// 2. Master Key Doğrulama Fonksiyonu
 export const verifyMasterKey = async (phoneNumber: string, masterKey: string): Promise<MeResponse> => {
   const res = await api.post<ActivationLoginResponse>("/api/auth/verify-master-key", {
     phoneNumber,
@@ -52,7 +60,7 @@ export const verifyMasterKey = async (phoneNumber: string, masterKey: string): P
   });
   const data = res.data;
   
-  localStorage.setItem("token", data.token); // Token yenilenebilir
+  localStorage.setItem("token", data.token);
 
   return {
     id: data.id,
@@ -61,6 +69,9 @@ export const verifyMasterKey = async (phoneNumber: string, masterKey: string): P
     profilePictureUrl: data.profilePictureUrl,
     about: data.about,
     isActivated: true,
+    // ✅ EKSİK ALANLARI DOLDURDUK
+    isPhoneNumberVisible: false,
+    role: data.role || "USER"
   };
 };
 
@@ -74,7 +85,10 @@ export const fetchMe = async (): Promise<MeResponse> => {
     phoneNumber: d.phoneNumber,
     profilePictureUrl: d.profilePictureUrl,
     about: d.about,
-    isActivated: d.isActivated !== undefined ? d.isActivated : true, // Eskiden kalan kullanıcılar sorun yaşamasın
+    isActivated: d.isActivated !== undefined ? d.isActivated : true,
+    // ✅ EKSİK ALANLAR (Backend'den geliyorsa oradan al, yoksa varsayılan)
+    isPhoneNumberVisible: d.isPhoneNumberVisible || false,
+    role: d.role || "USER"
   };
 };
 
@@ -86,7 +100,14 @@ export const updateProfile = async (data: {
   displayName?: string;
   about?: string;
   profilePictureUrl?: string;
+  isPhoneNumberVisible?: boolean;
 }): Promise<MeResponse> => {
   const res = await api.put<MeResponse>("/api/users/me", data);
-  return res.data;
+  // Dönen veriyi tip güvenliğine almak için eksikleri tamamlıyoruz
+  const d = res.data;
+  return {
+      ...d,
+      isPhoneNumberVisible: d.isPhoneNumberVisible || false,
+      role: d.role || "USER"
+  };
 };

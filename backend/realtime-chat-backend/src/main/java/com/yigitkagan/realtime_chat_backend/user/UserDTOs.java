@@ -9,7 +9,9 @@ public class UserDTOs {
             String displayName,
             String profilePictureUrl,
             String about,
-            boolean isActivated
+            boolean isActivated,
+            boolean isPhoneNumberVisible, // <--- EKLENDİ
+            String role
     ) {}
 
     // Profil güncelleme isteği için DTO

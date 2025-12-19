@@ -37,7 +37,8 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role = Role.USER;
-
+    @Column(nullable = false)
+    private boolean isPhoneNumberVisible = true;
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();
@@ -66,4 +67,7 @@ public class User {
     public void setAbout(String about) { this.about = about; }
     public boolean isActivated() { return isActivated; }
     public void setActivated(boolean activated) { isActivated = activated; }
+    public boolean isPhoneNumberVisible() { return isPhoneNumberVisible; }
+    public void setPhoneNumberVisible(boolean phoneNumberVisible) { isPhoneNumberVisible = phoneNumberVisible; }
+
 }

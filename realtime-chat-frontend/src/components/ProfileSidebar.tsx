@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { updateProfile } from "../api/auth";
 import { uploadProfileImage } from "../api/user";
 import type { MeResponse } from "../api/auth";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons"; // Göz ikonları
 
 interface ProfileSidebarProps {
   isOpen: boolean;
@@ -24,8 +26,12 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   const [isEditingAbout, setIsEditingAbout] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isHoveringImage, setIsHoveringImage] = useState(false);
+  
+  // ✅ YENİ STATE: Telefon Numarası Görünürlüğü
+  const [isPhoneNumberVisible, setIsPhoneNumberVisible] = useState(me.isPhoneNumberVisible);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -36,6 +42,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   useEffect(() => {
     setDisplayName(me.displayName);
     setAbout(me.about || "");
+    setIsPhoneNumberVisible(me.isPhoneNumberVisible);
   }, [me]);
 
   const handleSave = async (field: "name" | "about") => {
@@ -73,17 +80,30 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
     }
   };
 
+  // ✅ YENİ FONKSİYON: Gizlilik Ayarını Değiştirince Kaydet
+  const togglePrivacy = async () => {
+    const newValue = !isPhoneNumberVisible;
+    setIsPhoneNumberVisible(newValue); // Hemen UI güncellensin (Optimistic Update)
+    try {
+        const updatedUser = await updateProfile({isPhoneNumberVisible: newValue });
+        onUpdateMe(updatedUser);
+    } catch (error) {
+        console.error("Gizlilik ayarı kaydedilemedi", error);
+        setIsPhoneNumberVisible(!newValue); // Hata olursa geri al
+    }
+  };
+
   return (
     <div
       style={{
         position: "fixed",
         top: 0,
         left: 0,
-        width: isMobile ? "100%" : 330,
+        width: isMobile ? "100%" : 350,
         height: "100%",
-        backgroundColor: "#F5F3FF", // ContactInfoSidebar ile aynı zemin
+        backgroundColor: "#F5F3FF",
         zIndex: 2000,
-        transform: isOpen ? "translateX(0)" : "translateX(-100%)",
+        transform: isOpen ? "translateX(0)" : "translateX(-100%)", // SOL TARAFTAN AÇILIR
         transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: "2px 0 10px rgba(0,0,0,0.1)",
         display: "flex",
@@ -162,13 +182,13 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
                   }}
                 >
                     {isUploading ? <span>⌛</span> : <span style={{ fontSize: 24 }}>📷</span>}
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleFileChange} />
+                    <input type="file" ref={fileInputRef} accept="image/*" style={{ display: "none" }} onChange={handleFileChange} />
                 </label>
             )}
           </div>
         </div>
 
-        {/* BİLGİ KARTLARI KAPSAYICISI (ContactInfoSidebar tarzı padding) */}
+        {/* BİLGİ KARTLARI KAPSAYICISI */}
         <div style={{ padding: "0 15px" }}>
 
             {/* İSİM KARTI */}
@@ -227,6 +247,37 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
              <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                  <div style={{ fontSize: 13, color: "#9B95C9", marginBottom: 5 }}>Telefon Numarası</div>
                  <div style={{ fontSize: 16, color: "#3E3663" }}>{me.phoneNumber}</div>
+             </div>
+
+             {/* ✅ YENİ EKLENEN KART: GİZLİLİK AYARI */}
+             <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                 <div style={{display:"flex", alignItems:"center", gap:10}}>
+                    <FontAwesomeIcon icon={isPhoneNumberVisible ? faEye : faEyeSlash} style={{color:"#9B95C9", fontSize:"18px"}}/>
+                    <div style={{display:"flex", flexDirection:"column"}}>
+                       <span style={{ fontSize: 15, color: "#3E3663", fontWeight: 500 }}>Numaramı Göster</span>
+                       <span style={{ fontSize: 11, color: "#999" }}>Diğerleri numaranı görebilir</span>
+                    </div>
+                 </div>
+                 
+                 {/* Switch Butonu */}
+                 <label style={{ position: "relative", display: "inline-block", width: "46px", height: "24px" }}>
+                    <input 
+                        type="checkbox" 
+                        checked={isPhoneNumberVisible} 
+                        onChange={togglePrivacy}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                        position: "absolute", cursor: "pointer", top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: isPhoneNumberVisible ? "#6F79FF" : "#ccc",
+                        transition: ".3s", borderRadius: "34px"
+                    }}></span>
+                    <span style={{
+                        position: "absolute", content: '""', height: "18px", width: "18px",
+                        left: isPhoneNumberVisible ? "24px" : "3px", bottom: "3px",
+                        backgroundColor: "white", transition: ".3s", borderRadius: "50%"
+                    }}></span>
+                </label>
              </div>
 
         </div>

@@ -1,4 +1,5 @@
 import api from "./client";
+
 export interface UserListItem {
   id: number;
   email: string;
@@ -25,7 +26,7 @@ export interface ChatMessageResponse {
   senderId: number;
   content: string;
   createdAt: string;
-  status?: MessageStatus; // <-- yeni alan (opsiyonel, backend ekleyince dolacak)
+  status?: MessageStatus;
 }
 
 export const listUsers = async (): Promise<UserListItem[]> => {
@@ -52,15 +53,12 @@ export const getMessages = async (
   viewerId: number,
   page: number = 0
 ): Promise<ChatMessageResponse[]> => {
-
-  // Backend'e page parametresini gönderiyoruz
   const res = await api.get(`/api/conversations/${conversationId}/messages`, {
     params: { page: page, size: 50, viewerId },
   });
   if (res.data && Array.isArray(res.data.content)) {
     return res.data.content as ChatMessageResponse[];
   }
-  // Eğer backend bir gün değişir de direkt array dönerse diye önlem:
   if (Array.isArray(res.data)) {
     return res.data as ChatMessageResponse[];
   }
@@ -94,20 +92,41 @@ export const uploadAudio = async (audioBlob: Blob): Promise<string> => {
 
 export const uploadMedia = async (file: File | Blob): Promise<string> => {
   const formData = new FormData();
-  
-  // Eğer dosya Blob ise (Kameradan gelen gibi) isim vermemiz gerekir.
-  // File tipindeyse (Input'tan gelen) kendi ismi vardır.
   if (file instanceof File) {
     formData.append("file", file);
   } else {
-    // Blob için varsayılan bir isim uyduruyoruz
     formData.append("file", file, `camera_capture_${Date.now()}.jpg`);
   }
 
-  // Mevcut 'api' instance'ını kullanıyoruz (BaseURL ve Token ayarları otomatik gelir)
   const res = await api.post<{ url: string }>("/api/files/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   
   return res.data.url;
+};
+
+// --- DUYURU & KANAL API (DÜZELTİLDİ: 'api' instance kullanıldı) ---
+
+// Duyuruları getir
+export const getAnnouncements = async () => {
+  // api.get zaten base url ve auth header'ı halleder
+  const res = await api.get("/api/announcements");
+  return res.data;
+};
+
+// Yeni duyuru paylaş (Sadece Admin)
+export const postAnnouncement = async (content: string, mediaUrl: string | null, userId: number) => {
+  const res = await api.post(`/api/announcements`, 
+    { content, mediaUrl }, 
+    { params: { userId } } // Query param olarak userId gönderiyoruz
+  );
+  return res.data;
+};
+
+// Tepki ver
+export const reactToAnnouncement = async (announcementId: number, userId: number, emoji: string) => {
+  const res = await api.post(`/api/announcements/${announcementId}/react`, null, {
+    params: { userId, emoji } // Query params olarak gönderiyoruz
+  });
+  return res.data;
 };

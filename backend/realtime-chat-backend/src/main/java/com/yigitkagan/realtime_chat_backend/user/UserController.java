@@ -4,11 +4,11 @@ import com.yigitkagan.realtime_chat_backend.file.FileService;
 import com.yigitkagan.realtime_chat_backend.presence.PresenceService;
 import com.yigitkagan.realtime_chat_backend.user.UserDTOs.UserListItem;
 import com.yigitkagan.realtime_chat_backend.user.UserDTOs.UserMeResponse;
-import com.yigitkagan.realtime_chat_backend.user.UpdateProfileRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 import java.util.Set;
 
@@ -39,18 +39,16 @@ public class UserController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String imageUrl;
-
         try {
-            // HATA VEREN KISIM BURASIYDI, try-catch içine aldık.
             imageUrl = fileService.uploadFile(file);
         } catch (java.io.IOException e) {
-            // Eğer Cloudinary'ye yüklerken hata olursa 500 hatası fırlat
             throw new RuntimeException("Resim yüklenirken hata oluştu: " + e.getMessage());
         }
 
         user.setProfilePictureUrl(imageUrl);
         userRepository.save(user);
 
+        // ✅ GÜNCELLENDİ: Yeni alanlar eklendi
         return ResponseEntity.ok(new UserMeResponse(
                 user.getId(),
                 user.getEmail(),
@@ -58,25 +56,37 @@ public class UserController {
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
                 user.getAbout(),
-                user.isActivated()
+                user.isActivated(),
+                user.isPhoneNumberVisible(),
+                user.getRole().name()
         ));
     }
 
+    // Kullanıcı Listesi (Gizlilik Ayarına Göre Filtreli)
     @GetMapping
     public List<UserListItem> listUsers(Authentication authentication) {
         String currentEmail = (String) authentication.getPrincipal();
 
+        // Admin olup olmadığını kontrol edebiliriz (Opsiyonel)
+        // User currentUser = userRepository.findByEmail(currentEmail).orElseThrow();
+
         return userRepository.findAllByIsActivatedTrue()
                 .stream()
                 .filter(u -> !u.getEmail().equals(currentEmail))
-                .map(u -> new UserListItem(
-                        u.getId(),
-                        u.getEmail(),
-                        u.getDisplayName(),
-                        u.getProfilePictureUrl(),
-                        u.getAbout(),
-                        u.getPhoneNumber()
-                ))
+                .map(u -> {
+                    // ✅ GİZLİLİK MANTIĞI:
+                    // Eğer kullanıcı numarasını gizlediyse, boş string veya "Gizli" dön.
+                    String phoneToSend = u.isPhoneNumberVisible() ? u.getPhoneNumber() : "";
+
+                    return new UserListItem(
+                            u.getId(),
+                            u.getEmail(),
+                            u.getDisplayName(),
+                            u.getProfilePictureUrl(),
+                            u.getAbout(),
+                            phoneToSend // Gizlenmiş veya açık numara
+                    );
+                })
                 .toList();
     }
 
@@ -102,8 +112,14 @@ public class UserController {
             user.setProfilePictureUrl(request.getProfilePictureUrl());
         }
 
+        // ✅ EKLENDİ: Telefon Numarası Görünürlüğü Ayarı
+        if (request.getIsPhoneNumberVisible() != null) {
+            user.setPhoneNumberVisible(request.getIsPhoneNumberVisible());
+        }
+
         userRepository.save(user);
 
+        // ✅ GÜNCELLENDİ: Response'a yeni alanlar eklendi
         return new UserMeResponse(
                 user.getId(),
                 user.getEmail(),
@@ -111,7 +127,9 @@ public class UserController {
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
                 user.getAbout(),
-                user.isActivated()
+                user.isActivated(),
+                user.isPhoneNumberVisible(),
+                user.getRole().name()
         );
     }
 
@@ -121,6 +139,7 @@ public class UserController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // ✅ GÜNCELLENDİ
         return new UserMeResponse(
                 user.getId(),
                 user.getEmail(),
@@ -128,7 +147,9 @@ public class UserController {
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
                 user.getAbout(),
-                user.isActivated()
+                user.isActivated(),
+                user.isPhoneNumberVisible(),
+                user.getRole().name()
         );
     }
 
@@ -142,13 +163,16 @@ public class UserController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
 
+        // ✅ GİZLİLİK MANTIĞI BURADA DA GEÇERLİ
+        String phoneToSend = user.isPhoneNumberVisible() ? user.getPhoneNumber() : "";
+
         return new UserListItem(
                 user.getId(),
                 user.getEmail(),
                 user.getDisplayName(),
                 user.getProfilePictureUrl(),
                 user.getAbout(),
-                user.getPhoneNumber()
+                phoneToSend
         );
     }
 }
