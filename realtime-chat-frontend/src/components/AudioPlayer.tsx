@@ -26,12 +26,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
     if (!containerRef.current) return;
 
     // 1. URL Güvenliği
-    const secureUrl = audioUrl.startsWith("http://") 
-      ? audioUrl.replace("http://", "https://") 
+    const secureUrl = audioUrl.startsWith("http://")
+      ? audioUrl.replace("http://", "https://")
       : audioUrl;
 
-    const waveColor = isMine ? "#ffffffaf" : "#BDBDBD"; 
-    const progressColor = isMine ? "#f5f5f5dc" : "#6F79FF"; 
+    const waveColor = isMine ? "#ffffffaf" : "#BDBDBD";
+    const progressColor = isMine ? "#f5f5f5dc" : "#6F79FF";
 
     // WaveSurfer Oluştur
     const ws = WaveSurfer.create({
@@ -51,38 +51,57 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
 
     // 2. Sesi Yükle
     try {
-        ws.load(secureUrl);
+      ws.load(secureUrl);
     } catch (error) {
-        console.error("Ses yükleme hatası:", error);
+      console.error("Ses yükleme hatası:", error);
     }
 
-    // --- EVENT LISTENERS (DÜZELTİLEN KISIM) ---
-
-    // Hazır olduğunda süreyi al
+   // 1. Hazır olduğunda süreyi al
     ws.on("ready", () => {
-      setDuration(ws.getDuration());
+      const d = ws.getDuration();
+      // Eğer süre sonsuz (Infinity) gelirse (Chrome bug'ı), state'i güncelleme,
+      // audioprocess içinde düzelmesini bekle.
+      if (d !== Infinity && !isNaN(d)) {
+        setDuration(d);
+      }
     });
 
-    // Oynarken süreyi güncelle
+    // 2. Oynarken süreyi güncelle (KRİTİK DÜZELTME BURADA)
     ws.on("audioprocess", () => {
-      setCurrentTime(ws.getCurrentTime());
+      const time = ws.getCurrentTime();
+      const totalDuration = ws.getDuration();
+
+      // Hata Düzeltme: Eğer süre sonsuz değilse ve çalan süre toplam süreyi geçtiyse
+      // (veya çok yaklaştıysa) manuel olarak bitir.
+      if (totalDuration > 0 && totalDuration !== Infinity) {
+        // Eğer kalan süre 0.1 saniyeden azsa "bitti" kabul et
+        if (totalDuration - time < 0.1) {
+           // Playback'i durdur ve bitiş işlemlerini tetikle
+           ws.pause();
+           ws.seekTo(0);
+           setIsPlaying(false);
+           setCurrentTime(0);
+           return; 
+        }
+      }
+
+      setCurrentTime(time);
     });
 
-    // ✅ Oynatma başladığında ikonu güncelle
+    // 3. Oynatma başladığında
     ws.on("play", () => setIsPlaying(true));
 
-    // ✅ Duraklatıldığında ikonu güncelle
+    // 4. Duraklatıldığında
     ws.on("pause", () => setIsPlaying(false));
 
-    // ✅ Ses bittiğinde her şeyi sıfırla
+    // 5. Ses bittiğinde (Normal şartlarda burası çalışır)
     ws.on("finish", () => {
       setIsPlaying(false);
       setCurrentTime(0);
-      ws.seekTo(0); // Başa sar
+      ws.seekTo(0);
     });
-
     ws.on("error", (e) => {
-        console.error("WaveSurfer Hatası:", e);
+      console.error("WaveSurfer Hatası:", e);
     });
 
     // Temizlik
@@ -100,56 +119,57 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "300px", padding: "0" }}>
-      
+    <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minWidth:"260px", maxWidth: "300px", padding: "0" }}>
+
       {/* 1. Profil Resmi + Küçük Mikrofon */}
       <div style={{ position: "relative", flexShrink: 0 }}>
         <div style={{
-            width: 50, height: 50, borderRadius: "50%",
-            backgroundImage: senderProfilePic ? `url(${senderProfilePic})` : "none",
-            backgroundColor: isMine ? "rgba(255,255,255,0.2)" : "#DDD6FF",
-            backgroundSize: "cover", backgroundPosition: "center",
-            display: "flex", alignItems: "center", justifyContent: "center"
+          width: 50, height: 50, borderRadius: "50%",
+          backgroundImage: senderProfilePic ? `url(${senderProfilePic})` : "none",
+          backgroundColor: isMine ? "rgba(255,255,255,0.2)" : "#DDD6FF",
+          backgroundSize: "cover", backgroundPosition: "center",
+          display: "flex", alignItems: "center", justifyContent: "center"
         }}>
-             {!senderProfilePic && <span style={{fontSize:"10px"}}>?</span>}
+          {!senderProfilePic && <span style={{ fontSize: "10px" }}>?</span>}
         </div>
         <div style={{
-            position: "absolute", bottom: -2, right: -4,
-            color: isMine ? "#FFF" : "#6F79FF", // İkon rengi (Zemine göre değil ikona göre)
-            // Zemin rengi yok, sadece ikon var (WhatsApp tarzı)
-            fontSize: "14px",
-            filter: "drop-shadow(0px 1px 1px rgba(0,0,0,0.2))"
+          position: "absolute", bottom: -2, right: -4,
+          color: isMine ? "#FFF" : "#6F79FF", // İkon rengi (Zemine göre değil ikona göre)
+          // Zemin rengi yok, sadece ikon var (WhatsApp tarzı)
+          fontSize: "14px",
+          filter: "drop-shadow(0px 1px 1px rgba(0,0,0,0.2))"
         }}>
-            <FontAwesomeIcon icon={faMicrophone} />
+          <FontAwesomeIcon icon={faMicrophone} />
         </div>
       </div>
 
       {/* 2. Oynat Butonu */}
-      <button 
+      <button
         onClick={togglePlay}
         style={{
-            background: "transparent", border: "none", 
-            color: isMine ? "white" : "#6F79FF", // Renkler
-            fontSize: "24px", cursor: "pointer", 
-            padding: "0 4px", display: "flex", alignItems: "center",
-            outline: "none"
+          background: "transparent", border: "none",
+          color: isMine ? "white" : "#6F79FF", // Renkler
+          fontSize: "24px", cursor: "pointer",
+          padding: "0 4px", display: "flex", alignItems: "center",
+          outline: "none"
         }}
       >
         <FontAwesomeIcon icon={isPlaying ? faPause : faPlay} />
       </button>
 
       {/* 3. Dalga Formu ve Süre */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center"}}>
-         {/* Waveform */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
+        {/* Waveform */}
         <div ref={containerRef} style={{ width: "100%", marginTop: "10px" }} />
-        
+
         {/* Tek Sayaç (Solda) */}
-        <div style={{ 
-            fontSize: "11px", 
-            color: isMine ? "rgba(255,255,255,0.8)" : "#8E88B9", 
-            lineHeight: 1
+        <div style={{
+          fontSize: "11px",
+          color: isMine ? "rgba(255,255,255,0.8)" : "#8E88B9",
+          lineHeight: 1,
+          whiteSpace: "nowrap"
         }}>
-            {formatTime(currentTime > 0 ? currentTime : duration)}
+          {formatTime(currentTime > 0 ? currentTime : duration)}
         </div>
       </div>
     </div>

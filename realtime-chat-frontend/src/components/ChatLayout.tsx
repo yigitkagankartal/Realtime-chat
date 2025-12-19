@@ -997,46 +997,66 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
               </button>
             </>
           ) : (
-            // 🔵 NORMAL MOD
+            // 🔵 NORMAL MOD (GÜNCELLENMİŞ)
             <>
-              {/* Artı Butonu (Yuvarlak beyaz zemin içinde) */}
-              <button style={{
-                backgroundColor: "#FFFFFF", // Kendi zemini
-                border: "none", color: "#9B95C9",
-                width: "50px", height: "50px", borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "22px", cursor: "pointer",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.05)", // Hafif gölge
-                outline: "none", transition: "transform 0.2s"
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-              >
-                <FontAwesomeIcon icon={faPlus} />
-              </button>
+              {/* 1. BİRLEŞİK INPUT ALANI (HAP ŞEKLİNDE KUTU) */}
+              <div style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                backgroundColor: "#FFFFFF", // Kapsayıcı beyaz
+                borderRadius: "25px",       // Yuvarlatılmış köşeler
+                padding: "5px 10px",        // İçerik boşluğu
+                boxShadow: "0 4px 15px rgba(0,0,0,0.05)", // Gölge artık kutuda
+                height: "50px",
+                gap: "8px"                  // Elemanlar arası boşluk
+              }}>
+                
+                {/* SOL BUTON (ARTI) - Artık şeffaf */}
+                <button 
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#9B95C9", // İkon rengi
+                    fontSize: "20px",
+                    cursor: "pointer",
+                    padding: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "transform 0.2s",
+                    outline: "none"
+                  }}
+                  title="Eklenti Ekle"
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "rotate(90deg)"} // Efekt: Üzerine gelince dönsün
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "rotate(0deg)"}
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                </button>
 
-              {/* 👇 INPUT KUTUSU (BEYAZ, GÖLGELİ, HAP) */}
-              <input
-                ref={inputRef}
-                style={{
-                  flex: 1,
-                  height: "50px", // Yükseklik sabitlendi
-                  padding: "0 24px",
-                  borderRadius: "25px",
-                  border: "none", 
-                  backgroundColor: "#FFFFFF", // Beyaz Zemin
-                  color: "#3E3663",
-                  fontSize: "16px",
-                  outline: "none",
-                  boxShadow: "0 4px 15px rgba(0,0,0,0.05)" // Havada durma efekti burada
-                }}
-                value={newMessage}
-                onChange={handleInputChange}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Bir mesaj yazın"
-              />
+                {/* GERÇEK INPUT - Artık şeffaf ve kenarlıksız */}
+                <input
+                  ref={inputRef}
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    fontSize: "16px",
+                    color: "#3E3663",
+                    height: "100%",
+                    padding: "0 5px" // Yazının kenarlara yapışmaması için ufak boşluk
+                  }}
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  placeholder="Bir mesaj yazın"
+                />
+                
+                {/* İstersen buraya Emoji butonu da ekleyebilirsin, aynı Artı butonu mantığıyla */}
+              </div>
 
-              {/* Dinamik Buton */}
+              {/* 2. GÖNDER / MİKROFON BUTONU (SAĞDA AYRI) */}
               <button
                 onClick={() => {
                   if (newMessage.trim()) handleSend();
@@ -1044,7 +1064,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                 }}
                 style={{
                   width: "50px", height: "50px", borderRadius: "50%",
-                  backgroundColor: "#6F79FF",
+                  backgroundColor: "#6F79FF", // Ana renk
                   color: "white",
                   border: "none",
                   fontSize: "20px",
@@ -1052,8 +1072,11 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                   cursor: "pointer",
                   transition: "all 0.2s ease",
                   boxShadow: "0 4px 15px rgba(111, 121, 255, 0.4)", // Mor gölge
-                  outline: "none"
+                  outline: "none",
+                  flexShrink: 0 // Daralmasını engelle
                 }}
+                onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.95)"}
+                onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
               >
                 <FontAwesomeIcon icon={newMessage.trim() ? faPaperPlane : faMicrophone} />
               </button>
