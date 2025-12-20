@@ -130,3 +130,16 @@ export const reactToAnnouncement = async (announcementId: number, userId: number
   });
   return res.data;
 };
+
+// Duyuru Sil
+export const deleteAnnouncement = async (id: number, userId: number) => {
+  await api.delete(`/api/announcements/${id}`, { params: { userId } });
+};
+
+// Duyuru Düzenle (Şimdilik basit text update)
+export const updateAnnouncement = async (id: number, userId: number, content: string) => {
+  await api.put(`/api/announcements/${id}`, content, {
+     headers: { "Content-Type": "text/plain" }, // Düz metin gönderiyoruz
+     params: { userId } 
+  });
+};

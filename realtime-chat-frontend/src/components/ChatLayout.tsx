@@ -10,7 +10,8 @@ import {
   uploadMedia,
   getAnnouncements,
   postAnnouncement,
-  reactToAnnouncement
+  reactToAnnouncement,
+  deleteAnnouncement
 } from "../api/chat";
 import type {
   ChatMessageResponse,
@@ -184,6 +185,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const onlineIds = useOnlineUsers(me.id);
   const prevOnlineIdsRef = useRef<number[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // ADMIN & DUYURU
   const [activeTab, setActiveTab] = useState<"CHATS" | "CHANNELS">("CHATS"); // Sekme kontrolü
@@ -442,15 +444,28 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     }
   };
 
+  // ChatLayout.tsx içinde bu fonksiyonu bul ve güncelle:
   const sendAudioMessage = async (audioBlob: Blob) => {
     if (!selectedConversation) return;
     try {
       const audioUrl = await uploadAudio(audioBlob);
-      sendMessage({
-        conversationId: selectedConversation.id,
-        senderId: me.id,
-        content: "AUDIO::" + audioUrl,
-      });
+      
+      // ✅ EĞER DUYURU KANALIYSA:
+      if (selectedConversation.id === -999) {
+          if (me.role === "ADMIN") {
+             // Duyuru olarak ses atıyoruz
+             await postAnnouncement("🎤 Sesli Duyuru", audioUrl, me.id); 
+             loadAnnouncements();
+          }
+      } 
+      // ✅ NORMAL SOHBETSE:
+      else {
+          sendMessage({
+            conversationId: selectedConversation.id,
+            senderId: me.id,
+            content: "AUDIO::" + audioUrl,
+          });
+      }
     } catch (error) { console.error("Ses gönderilemedi:", error); }
   };
 
@@ -515,12 +530,44 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     }
   }, [me]);
 
-  // DUYURU & KANAL LOGIC
+  // ✅ 1. VERİYİ YÜKLEME KISMI (Burayı Güncelle)
   useEffect(() => {
-    if (activeTab === "CHANNELS") {
+    // Eğer Kanallar sekmesindeysek VEYA Duyuru Kanalı seçiliyse veriyi çek
+    if (activeTab === "CHANNELS" || (selectedConversation && selectedConversation.id === -999)) {
       loadAnnouncements();
     }
-  }, [activeTab]);
+  }, [activeTab, selectedConversation]); // selectedConversation değişince de çalışsın
+
+// ✅ 2. SCROLL KISMI (Burayı da Güncelle)
+  useEffect(() => {
+    if (selectedConversation?.id === -999) {
+      // Hafif bir gecikme ekleyerek DOM'un hazır olmasını bekle
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [announcements, activeTab, selectedConversation]);
+
+  // ✅ AUTO-RESIZE EFFECT (WhatsApp Tarzı)
+  useEffect(() => {
+    if (textareaRef.current) {
+      // 1. Önce yüksekliği sıfırla ki küçülme durumunu algılasın
+      textareaRef.current.style.height = "24px"; 
+      // 2. İçeriğin yüksekliğini al (ScrollHeight)
+      const scrollHeight = textareaRef.current.scrollHeight;
+      // 3. Yeni yüksekliği ayarla (Max 150px'e kadar büyüsün, sonra scroll çıksın)
+      textareaRef.current.style.height = Math.min(scrollHeight, 150) + "px";
+    }
+  }, [channelMessage]);
+
+  // ✅ SİLME FONKSİYONU
+  const handleDeleteAnnouncement = async (id: number) => {
+     if(!window.confirm("Bu duyuruyu silmek istediğine emin misin?")) return;
+     try {
+        await deleteAnnouncement(id, me.id); // chat.ts'den import etmelisin
+        loadAnnouncements(); // Listeyi yenile
+     } catch(e) { console.error(e); }
+  };
 
   const loadAnnouncements = async () => {
     try {
@@ -706,39 +753,155 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       {/* --- SAĞ PANEL --- */}
       <div style={{ flex: 1, display: isMobile && !selectedConversation ? "none" : "flex", flexDirection: "column", background: "linear-gradient(180deg, #EDE9FF, #DAD4FF)", height: "100vh" }}>
         
-        {/* DUYURU EKRANI */}
+        {/* A) DUYURU KANALI GÖRÜNÜMÜ - TASARIM GÜNCELLENDİ */}
         {selectedConversation && selectedConversation.id === -999 ? (
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <div style={{ height: "65px", background: "white", padding: "0 20px", display: "flex", alignItems: "center", borderBottom: "1px solid #ddd", gap: 15 }}>
-              {isMobile && <button onClick={() => setSelectedConversation(null)} style={{border:"none", background:"transparent", fontSize:"24px"}}>‹</button>}
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#FF9800", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>📢</div>
-              <div style={{ fontWeight: "bold", fontSize: "18px", color: "#3E3663" }}>Vivoria Duyurular</div>
+            
+            {/* Kanal Header */}
+            <div style={{ height: "65px", background: "white", padding: "0 20px", display: "flex", alignItems: "center", borderBottom: "1px solid #EAE6FF", gap: 15, boxShadow: "0 2px 5px rgba(0,0,0,0.02)" }}>
+              {isMobile && <button onClick={() => setSelectedConversation(null)} style={{border:"none", background:"transparent", fontSize:"24px", color:"#3E3663"}}>‹</button>}
+              <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg, #FF9800, #FF5722)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize:"18px", boxShadow:"0 2px 8px rgba(255, 152, 0, 0.3)" }}>📢</div>
+              <div style={{ display:"flex", flexDirection:"column" }}>
+                 <div style={{ fontWeight: "bold", fontSize: "17px", color: "#3E3663" }}>Vivoria Duyurular</div>
+                 <div style={{ fontSize: "12px", color: "#9B95C9" }}>Resmi güncellemeler</div>
+              </div>
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px", background: "#E0E0E0" }}>
+
+            {/* Duyuru Akışı */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px", background: "linear-gradient(180deg, #F5F3FF, #EAE6FF)" }}>
               {announcements.map((ann) => (
-                <div key={ann.id} style={{ maxWidth: "600px", margin: "0 auto 20px auto", backgroundColor: "white", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", overflow: "hidden" }}>
-                  {ann.mediaUrl && <img src={ann.mediaUrl} style={{ width: "100%", maxHeight: "300px", objectFit: "cover" }} />}
-                  <div style={{ padding: "12px 16px" }}>
-                    <p style={{ whiteSpace: "pre-wrap", color: "#111", fontSize: "15px", lineHeight: "1.4", margin: "0 0 10px 0" }}>{ann.content}</p>
-                    <div style={{ display: "flex", gap: "8px", marginTop: "10px" }}>
+                <div key={ann.id} style={{ maxWidth: "600px", margin: "0 auto 25px auto", backgroundColor: "white", borderRadius: "16px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)", overflow: "hidden", border:"1px solid #fff", position: "relative" }}>
+                  
+                  {/* ✅ ADMİN İÇİN SİLME BUTONU (Sağ Üst Köşe) */}
+                  {me.role === "ADMIN" && (
+                      <button 
+                        onClick={() => handleDeleteAnnouncement(ann.id)} // Fonksiyon burada kullanılıyor!
+                        style={{ 
+                            position: "absolute", top: "10px", right: "10px", zIndex: 5,
+                            background: "rgba(255, 255, 255, 0.9)", border: "none", cursor: "pointer", 
+                            color: "#FF4D4D", width:"30px", height:"30px", borderRadius: "50%", 
+                            boxShadow: "0 2px 5px rgba(0,0,0,0.1)", display:"flex", alignItems:"center", justifyContent:"center" 
+                        }}
+                        title="Duyuruyu Sil"
+                      >
+                          <FontAwesomeIcon icon={faTrash} fontSize={14} />
+                      </button>
+                  )}
+
+                  {ann.mediaUrl && <img src={ann.mediaUrl} style={{ width: "100%", maxHeight: "350px", objectFit: "cover" }} />}
+                  <div style={{ padding: "20px" }}>
+                    <p style={{ whiteSpace: "pre-wrap", color: "#3E3663", fontSize: "15px", lineHeight: "1.6", margin: "0 0 15px 0", fontFamily: "'Segoe UI', sans-serif" }}>{ann.content}</p>
+                    
+                    {/* Tepkiler */}
+                    <div style={{ display: "flex", gap: "8px", flexWrap:"wrap" }}>
                       {["👍", "❤️", "😂", "😮", "😢", "👏"].map(emoji => {
                         const count = ann.reactions?.filter((r: any) => r.emoji === emoji).length || 0;
+                        const isReactedByMe = ann.reactions?.some((r: any) => r.emoji === emoji && Number(r.userId) === me.id);
                         return (
-                          <button key={emoji} onClick={() => handleReaction(ann.id, emoji)} style={{ background: count > 0 ? "#E7F3FF" : "#F0F2F5", border: count > 0 ? "1px solid #007BFF" : "none", borderRadius: "12px", padding: "4px 8px", cursor: "pointer", fontSize: "13px", display: "flex", alignItems: "center", gap: "4px" }}>
-                            {emoji} {count > 0 && <span style={{ fontWeight: "bold", color: "#007BFF" }}>{count}</span>}
+                          <button key={emoji} onClick={() => handleReaction(ann.id, emoji)} style={{ background: isReactedByMe ? "#E7F3FF" : "#F8F9FA", border: isReactedByMe ? "1px solid #6F79FF" : "1px solid #EEE", borderRadius: "20px", padding: "6px 12px", cursor: "pointer", fontSize: "14px", display: "flex", alignItems: "center", gap: "6px", transition:"all 0.2s" }}>
+                            {emoji} {count > 0 && <span style={{ fontWeight: "bold", color: isReactedByMe ? "#6F79FF" : "#999", fontSize:"12px" }}>{count}</span>}
                           </button>
                         )
                       })}
                     </div>
-                    <div style={{ textAlign: "right", fontSize: "11px", color: "#888", marginTop: "5px" }}>{new Date(ann.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div style={{ textAlign: "right", fontSize: "11px", color: "#9B95C9", marginTop: "10px", fontWeight:"600" }}>{new Date(ann.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                 </div>
               ))}
+              
+              {/* En alta kaydırma referansı */}
+              <div ref={messagesEndRef} />
             </div>
+
+            {/* --- ADMİN DUYURU PANELİ (SLIM - WHATSAPP TARZI) --- */}
             {me.role === "ADMIN" && (
-              <div style={{ padding: "10px", background: "white", display: "flex", gap: "10px" }}>
-                <input value={channelMessage} onChange={(e) => setChannelMessage(e.target.value)} placeholder="Bir duyuru yayınla..." style={{ flex: 1, padding: "10px", borderRadius: "20px", border: "1px solid #ddd" }} />
-                <button onClick={handlePostAnnouncement} style={{ background: "#6F79FF", color: "white", border: "none", borderRadius: "50%", width: 40, height: 40, cursor: "pointer" }}><FontAwesomeIcon icon={faPaperPlane} /></button>
+              <div style={{ minHeight: "70px", padding: "10px 20px 20px 20px", display: "flex", alignItems: "flex-end", gap: 12, position: "relative", zIndex: 10 }}>
+                
+                {/* 1. KAYIT MODU */}
+                {isRecording ? (
+                   <>
+                     <button onClick={cancelRecording} style={{ background: "white", border: "none", color: "#FF4D4D", width: 44, height: 44, borderRadius: "50%", boxShadow: "0 2px 5px rgba(0,0,0,0.1)", cursor:"pointer", marginBottom:"0px" }}>
+                        <FontAwesomeIcon icon={faTrash} />
+                     </button>
+                     <div style={{ flex: 1, background: "white", borderRadius: 30, height: 44, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 5px rgba(0,0,0,0.1)", color:"#FF4D4D", fontWeight:"bold", fontSize:"16px", marginBottom:"0px" }}>
+                        <div style={{width:8, height:8, background:"#FF4D4D", borderRadius:"50%", marginRight:10, animation:"bounce 1s infinite"}}></div>
+                        {formatDuration(recordingDuration)}
+                     </div>
+                     <button onClick={finishRecording} style={{ background: "#00C853", color: "white", width: 44, height: 44, borderRadius: "50%", border: "none", boxShadow: "0 2px 5px rgba(0,0,0,0.1)", cursor:"pointer", marginBottom:"0px" }}>
+                        <FontAwesomeIcon icon={faCheck} />
+                     </button>
+                   </>
+                ) : (
+                  /* 2. NORMAL YAZMA MODU */
+                  <>
+                     <input type="file" ref={documentInputRef} onChange={(e) => handleFileSelect(e, "DOCUMENT")} style={{ display: "none" }} />
+                     <input type="file" ref={galleryInputRef} onChange={(e) => handleFileSelect(e, "IMAGE")} style={{ display: "none" }} />
+                     
+                     {/* BEYAZ KUTU - YÜKSEKLİK VE PADDING AZALTILDI (DAHA İNCE) */}
+                     <div style={{ flex: 1, display: "flex", alignItems: "flex-end", backgroundColor: "#FFFFFF", borderRadius: "22px", padding: "10px 10px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", minHeight: "44px", position: "relative" }}>
+                        
+                        {/* Emoji & Plus Menu */}
+                        {showEmojiPicker && (
+                          <div style={{ position: "absolute", bottom: "55px", left: "0", zIndex: 100 }}>
+                            <EmojiPicker onEmojiClick={(emojiData) => setChannelMessage((prev) => prev + emojiData.emoji)} autoFocusSearch={false} theme={Theme.LIGHT} emojiStyle={EmojiStyle.APPLE} width="100%" height={400} skinTonesDisabled={true} searchDisabled={false} previewConfig={{ showPreview: false }} />
+                          </div>
+                        )}
+                        {isPlusMenuOpen && (
+                          <div style={{ position: "absolute", bottom: "55px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "15px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "200px", animation: "popupMenuEnter 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)", transformOrigin: "bottom left" }}>
+                            {[
+                              { icon: faFileAlt, label: "Belge", color: "#7F66FF", action: () => documentInputRef.current?.click() },
+                              { icon: faImages, label: "Galeri", color: "#007BFF", action: () => galleryInputRef.current?.click() },
+                              { icon: faCamera, label: "Kamera", color: "#FF4081", action: startCamera },
+                            ].map((item, idx) => (
+                              <div key={idx} onClick={() => { item.action(); if (item.label !== "Kamera") setPlusMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", transition: "0.2s" }}>
+                                <div style={{ width: "35px", height: "35px", borderRadius: "50%", background: `linear-gradient(135deg, ${item.color}, ${item.color}88)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "14px" }}><FontAwesomeIcon icon={item.icon} /></div>
+                                <span style={{ fontSize: "14px", fontWeight: "600", color: "#3E3663" }}>{item.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <button onClick={() => { setPlusMenuOpen(!isPlusMenuOpen); setShowEmojiPicker(false); }} style={{ background: "transparent", border: "none", color: isPlusMenuOpen ? "#6F79FF" : "#9B95C9", fontSize: "18px", padding: "0 8px", cursor: "pointer", transform: isPlusMenuOpen ? "rotate(45deg)" : "rotate(0deg)", transition: "transform 0.2s", marginBottom: "3px" }}><FontAwesomeIcon icon={faPlus} /></button>
+                        <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setPlusMenuOpen(false); }} style={{ background: "transparent", border: "none", color: showEmojiPicker ? "#6F79FF" : "#9B95C9", fontSize: "18px", padding: "0 8px", cursor: "pointer", marginBottom: "3px" }}><FontAwesomeIcon icon={faSmile} /></button>
+                        
+                        {/* DYNAMIC TEXTAREA - PADDING VE LINE-HEIGHT AYARLANDI */}
+                        <textarea 
+                            ref={textareaRef}
+                            style={{ 
+                                flex: 1, 
+                                background: "transparent", 
+                                border: "none", 
+                                outline: "none", 
+                                fontSize: "15px", 
+                                color: "#3E3663", 
+                                padding: "0 0px", 
+                                margin: 0,
+                                resize: "none", 
+                                fontFamily: "inherit",
+                                maxHeight: "140px", 
+                                overflowY: "auto", 
+                                height: "24px", 
+                                lineHeight: "24px" // Tek satır yüksekliğiyle eşit
+                            }} 
+                            rows={1}
+                            value={channelMessage} 
+                            onChange={(e) => setChannelMessage(e.target.value)} 
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault(); 
+                                    handlePostAnnouncement();
+                                }
+                            }} 
+                            placeholder="Bir mesaj yazın" 
+                        />
+                     </div>
+
+                     {/* GÖNDER BUTONU DA ORANTILI KÜÇÜLTÜLDÜ */}
+                     <button onClick={() => { if(channelMessage.trim()) handlePostAnnouncement(); else startRecording(); }} style={{ width: "44px", height: "44px", borderRadius: "50%", backgroundColor: "#6F79FF", color: "white", border: "none", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 15px rgba(111, 121, 255, 0.4)", transition: "transform 0.1s", marginBottom:"0px" }} onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.95)"} onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}>
+                        <FontAwesomeIcon icon={channelMessage.trim() ? faPaperPlane : faMicrophone} />
+                     </button>
+                  </>
+                )}
               </div>
             )}
           </div>

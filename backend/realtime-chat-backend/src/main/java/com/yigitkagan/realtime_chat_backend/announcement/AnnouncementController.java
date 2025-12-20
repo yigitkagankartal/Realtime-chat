@@ -21,14 +21,17 @@ public class AnnouncementController {
     @Autowired
     private UserRepository userRepository;
 
-    // WebSocket ile canlı bildirim atmak için (İleride frontend'e bağlayacağız)
+    // ✅ DÜZELTME 1: Bu satır eksikti, bu yüzden "cannot find symbol" diyordu.
+    @Autowired
+    private ReactionRepository reactionRepository;
+
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    // 1. Tüm Duyuruları Getir (Herkese Açık)
+    // 1. Tüm Duyuruları Getir (Herkese Açık - ASC Sıralı)
     @GetMapping
     public List<Announcement> getAllAnnouncements() {
-        return announcementRepository.findAllByOrderByCreatedAtDesc();
+        return announcementRepository.findAllByOrderByCreatedAtAsc();
     }
 
     // 2. Yeni Duyuru Oluştur (SADECE ADMIN)
@@ -37,42 +40,64 @@ public class AnnouncementController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
 
-        // Rol Kontrolü: Senin User.java'daki Enum yapına göre
         if (user.getRole() != Role.ADMIN) {
             return ResponseEntity.status(403).body("Bu işlem için yetkiniz yok. Sadece ADMIN duyuru atabilir.");
         }
 
         Announcement savedAnnouncement = announcementRepository.save(announcement);
-
-        // (Opsiyonel) Canlı bildirim gönder
-        // messagingTemplate.convertAndSend("/topic/announcements", savedAnnouncement);
-
         return ResponseEntity.ok(savedAnnouncement);
     }
 
-    // 3. Tepki Ver (Reaction) - Kullanıcılar için
+    // 3. Tepki Ver / Geri Al
     @PostMapping("/{id}/react")
-    public ResponseEntity<?> reactToAnnouncement(@PathVariable Long id,
-                                                 @RequestParam Long userId,
-                                                 @RequestParam String emoji) {
-
+    public ResponseEntity<Void> reactToAnnouncement(
+            @PathVariable Long id,
+            @RequestParam Long userId,
+            @RequestParam String emoji
+    ) {
+        // ✅ DÜZELTME 2: Reaction'a ID değil, Nesne (Announcement) vermemiz lazım.
         Announcement announcement = announcementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Duyuru bulunamadı"));
 
-        // Aynı kullanıcı aynı emojiyle tekrar tepki verirse silebiliriz (toggle mantığı)
-        // Şimdilik basitçe ekleme yapıyoruz:
+        // ReactionRepository içindeki metot ismine dikkat (findByAnnouncement_Id...)
+        Optional<Reaction> existingReaction = reactionRepository.findByAnnouncement_IdAndUserIdAndEmoji(id, userId, emoji);
 
-        Reaction reaction = new Reaction();
-        reaction.setAnnouncement(announcement);
-        reaction.setUserId(userId);
-        reaction.setEmoji(emoji);
+        if (existingReaction.isPresent()) {
+            // VARSA SİL (Geri al)
+            reactionRepository.delete(existingReaction.get());
+        } else {
+            // YOKSA EKLE
+            Reaction reaction = new Reaction();
 
-        // Listeye ekle
-        announcement.getReactions().add(reaction);
+            // ✅ DÜZELTME 3: setAnnouncementId yerine setAnnouncement
+            reaction.setAnnouncement(announcement);
+            reaction.setUserId(userId);
+            reaction.setEmoji(emoji);
 
-        // Kaydet (CascadeType.ALL olduğu için reaction da kaydedilir)
-        announcementRepository.save(announcement);
+            reactionRepository.save(reaction);
+        }
 
-        return ResponseEntity.ok(announcement);
+        return ResponseEntity.ok().build();
+    }
+
+    // 4. Duyuru Silme (Sadece Admin)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteAnnouncement(@PathVariable Long id, @RequestParam Long userId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        if (user.getRole() != Role.ADMIN) return ResponseEntity.status(403).body("Yetkisiz işlem");
+
+        announcementRepository.deleteById(id);
+        return ResponseEntity.ok().build();
+    }
+
+    // 5. Duyuru Düzenleme (Sadece Admin)
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateAnnouncement(@PathVariable Long id, @RequestParam Long userId, @RequestBody String newContent) {
+        User user = userRepository.findById(userId).orElseThrow();
+        if (user.getRole() != Role.ADMIN) return ResponseEntity.status(403).body("Yetkisiz işlem");
+
+        Announcement announcement = announcementRepository.findById(id).orElseThrow();
+        announcement.setContent(newContent);
+        return ResponseEntity.ok(announcementRepository.save(announcement));
     }
 }

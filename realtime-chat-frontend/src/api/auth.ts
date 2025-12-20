@@ -86,7 +86,6 @@ export const fetchMe = async (): Promise<MeResponse> => {
     profilePictureUrl: d.profilePictureUrl,
     about: d.about,
     isActivated: d.isActivated !== undefined ? d.isActivated : true,
-    // ✅ EKSİK ALANLAR (Backend'den geliyorsa oradan al, yoksa varsayılan)
     isPhoneNumberVisible: d.isPhoneNumberVisible || false,
     role: d.role || "USER"
   };
