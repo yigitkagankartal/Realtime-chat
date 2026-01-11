@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "messages")
@@ -26,17 +28,26 @@ public class Message {
 
     private Instant createdAt;
 
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
     private boolean readFlag = false;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private MessageStatus status = MessageStatus.SENT;
 
-
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();
     }
+
+    @OneToMany(mappedBy = "message", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    private List<MessageReaction> reactions = new ArrayList<>();
+
+    @Column(name = "deleted_for_everyone")
+    private boolean deletedForEveryone = false;
+
 
     // basic getters & setters
 
@@ -68,9 +79,11 @@ public class Message {
         this.content = content;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
+    public Instant getCreatedAt() { return createdAt;}
+
+    public Instant getUpdatedAt() { return updatedAt; }
+
+    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
     public boolean isReadFlag() {
         return readFlag;
@@ -87,5 +100,13 @@ public class Message {
     public void setStatus(MessageStatus status) {
         this.status = status;
     }
+
+    public List<MessageReaction> getReactions() { return reactions; }
+
+    public void setReactions(List<MessageReaction> reactions) { this.reactions = reactions; }
+
+    public boolean isDeletedForEveryone() { return deletedForEveryone; }
+
+    public void setDeletedForEveryone(boolean deletedForEveryone) { this.deletedForEveryone = deletedForEveryone; }
 
 }

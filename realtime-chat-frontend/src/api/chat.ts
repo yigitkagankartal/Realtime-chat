@@ -26,7 +26,10 @@ export interface ChatMessageResponse {
   senderId: number;
   content: string;
   createdAt: string;
+  updatedAt?: string;
   status?: MessageStatus;
+  reactions?: { emoji: string; count: number; isMe: boolean }[];
+  deletedForEveryone?: boolean;
 }
 
 export const listUsers = async (): Promise<UserListItem[]> => {
@@ -141,5 +144,44 @@ export const updateAnnouncement = async (id: number, userId: number, content: st
   await api.put(`/api/announcements/${id}`, content, {
      headers: { "Content-Type": "text/plain" }, // Düz metin gönderiyoruz
      params: { userId } 
+  });
+};
+
+export const reactToMessage = async (messageId: number, userId: number, emoji: string) => {
+  // Backend'de yazdığımız endpoint: POST /api/conversations/{messageId}/reaction
+  await api.post(`/api/conversations/${messageId}/reaction`, null, {
+    params: { userId, emoji }
+  });
+};
+
+// src/api/chat.ts dosyasının en altına ekle:
+
+// Mesaj Düzenle
+export const editMessage = async (messageId: number, userId: number, newContent: string) => {
+  await api.put(`/api/conversations/${messageId}`, newContent, {
+    headers: { "Content-Type": "text/plain" }, // Düz yazı gönderiyoruz
+    params: { userId }
+  });
+};
+
+// Mesaj Sil
+export const deleteMessage = async (messageId: number, userId: number) => {
+  await api.delete(`/api/conversations/${messageId}`, {
+    params: { userId }
+  });
+};
+// --- SİLME İŞLEMLERİ ---
+
+// Herkesten Sil (Revoke)
+export const deleteMessageForEveryone = async (messageId: number, userId: number) => {
+  await api.delete(`/api/conversations/${messageId}/everyone`, {
+    params: { userId }
+  });
+};
+
+// Benden Sil (Local Delete)
+export const deleteMessageForMe = async (messageId: number, userId: number) => {
+  await api.delete(`/api/conversations/${messageId}/me`, {
+    params: { userId }
   });
 };

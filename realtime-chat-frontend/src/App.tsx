@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import ChatLayout from "./components/ChatLayout";
 import LoginForm from "./components/LoginForm";
-import ActivationGate from "./components/ActivationGate"; // ✅ YENİ BİLEŞEN
+import ActivationGate from "./components/ActivationGate";
 import { fetchMe, logout } from "./api/auth";
 import type { MeResponse } from "./api/auth";
+import { SocketProvider } from "./context/SocketContext";
 
 const App: React.FC = () => {
   const [me, setMe] = useState<MeResponse | null | undefined>(undefined);
@@ -63,11 +64,14 @@ const App: React.FC = () => {
   }
 
   // ✅ Aktifse Sohbete git
+  // 🔥 BURAYI GÜNCELLEDİK: SocketProvider ile sarmaladık.
   return (
-    <ChatLayout
-      me={me}
-      onLogout={handleLogout}
-    />
+    <SocketProvider userId={me.id}>
+      <ChatLayout
+        me={me}
+        onLogout={handleLogout}
+      />
+    </SocketProvider>
   );
 };
 

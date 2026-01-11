@@ -33,7 +33,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
     const waveColor = isMine ? "#ffffffaf" : "#BDBDBD";
     const progressColor = isMine ? "#f5f5f5dc" : "#6F79FF";
 
-    // WaveSurfer Oluştur
+    // WaveSurfer
     const ws = WaveSurfer.create({
       container: containerRef.current,
       waveColor: waveColor,
@@ -59,24 +59,18 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
    // 1. Hazır olduğunda süreyi al
     ws.on("ready", () => {
       const d = ws.getDuration();
-      // Eğer süre sonsuz (Infinity) gelirse (Chrome bug'ı), state'i güncelleme,
-      // audioprocess içinde düzelmesini bekle.
       if (d !== Infinity && !isNaN(d)) {
         setDuration(d);
       }
     });
 
-    // 2. Oynarken süreyi güncelle (KRİTİK DÜZELTME BURADA)
+    // 2. Oynarken süreyi güncelle
     ws.on("audioprocess", () => {
       const time = ws.getCurrentTime();
       const totalDuration = ws.getDuration();
 
-      // Hata Düzeltme: Eğer süre sonsuz değilse ve çalan süre toplam süreyi geçtiyse
-      // (veya çok yaklaştıysa) manuel olarak bitir.
       if (totalDuration > 0 && totalDuration !== Infinity) {
-        // Eğer kalan süre 0.1 saniyeden azsa "bitti" kabul et
         if (totalDuration - time < 0.1) {
-           // Playback'i durdur ve bitiş işlemlerini tetikle
            ws.pause();
            ws.seekTo(0);
            setIsPlaying(false);
@@ -94,7 +88,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
     // 4. Duraklatıldığında
     ws.on("pause", () => setIsPlaying(false));
 
-    // 5. Ses bittiğinde (Normal şartlarda burası çalışır)
+    // 5. Ses bittiğinde
     ws.on("finish", () => {
       setIsPlaying(false);
       setCurrentTime(0);
@@ -110,8 +104,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
     };
   }, [audioUrl, isMine]);
 
-  // ✅ Toggle fonksiyonu artık sadece komut gönderiyor, state değiştirmiyor.
-  // State değişimi yukarıdaki "play" ve "pause" eventleri ile oluyor.
   const togglePlay = () => {
     if (waveSurferRef.current) {
       waveSurferRef.current.playPause();
@@ -134,8 +126,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
         </div>
         <div style={{
           position: "absolute", bottom: -2, right: -4,
-          color: isMine ? "#FFF" : "#6F79FF", // İkon rengi (Zemine göre değil ikona göre)
-          // Zemin rengi yok, sadece ikon var (WhatsApp tarzı)
+          color: isMine ? "#FFF" : "#6F79FF",
+          
           fontSize: "14px",
           filter: "drop-shadow(0px 1px 1px rgba(0,0,0,0.2))"
         }}>
@@ -148,7 +140,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, senderProfilePic, i
         onClick={togglePlay}
         style={{
           background: "transparent", border: "none",
-          color: isMine ? "white" : "#6F79FF", // Renkler
+          color: isMine ? "white" : "#6F79FF",
           fontSize: "24px", cursor: "pointer",
           padding: "0 4px", display: "flex", alignItems: "center",
           outline: "none"

@@ -27,7 +27,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isHoveringImage, setIsHoveringImage] = useState(false);
   
-  // ✅ YENİ STATE: Telefon Numarası Görünürlüğü
+  // STATE: Telefon Numarası Görünürlüğü
   const [isPhoneNumberVisible, setIsPhoneNumberVisible] = useState(me.isPhoneNumberVisible);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -80,16 +80,15 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
     }
   };
 
-  // ✅ YENİ FONKSİYON: Gizlilik Ayarını Değiştirince Kaydet
   const togglePrivacy = async () => {
     const newValue = !isPhoneNumberVisible;
-    setIsPhoneNumberVisible(newValue); // Hemen UI güncellensin (Optimistic Update)
+    setIsPhoneNumberVisible(newValue);
     try {
         const updatedUser = await updateProfile({isPhoneNumberVisible: newValue });
         onUpdateMe(updatedUser);
     } catch (error) {
         console.error("Gizlilik ayarı kaydedilemedi", error);
-        setIsPhoneNumberVisible(!newValue); // Hata olursa geri al
+        setIsPhoneNumberVisible(!newValue);
     }
   };
 
@@ -103,7 +102,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
         height: "100%",
         backgroundColor: "#F5F3FF",
         zIndex: 2000,
-        transform: isOpen ? "translateX(0)" : "translateX(-100%)", // SOL TARAFTAN AÇILIR
+        transform: isOpen ? "translateX(0)" : "translateX(-100%)",
         transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow: "2px 0 10px rgba(0,0,0,0.1)",
         display: "flex",
@@ -249,7 +248,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
                  <div style={{ fontSize: 16, color: "#3E3663" }}>{me.phoneNumber}</div>
              </div>
 
-             {/* ✅ YENİ EKLENEN KART: GİZLİLİK AYARI */}
+             {/* GİZLİLİK AYARI */}
              <div style={{ backgroundColor: "white", padding: "15px", borderRadius: 12, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                  <div style={{display:"flex", alignItems:"center", gap:10}}>
                     <FontAwesomeIcon icon={isPhoneNumberVisible ? faEye : faEyeSlash} style={{color:"#9B95C9", fontSize:"18px"}}/>

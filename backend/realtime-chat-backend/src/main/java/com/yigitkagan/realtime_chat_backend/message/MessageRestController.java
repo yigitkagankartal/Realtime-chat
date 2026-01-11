@@ -13,23 +13,40 @@ public class MessageRestController {
         this.chatService = chatService;
     }
 
-    // 👇 Mesaj listesini getir + DELIVERED güncelle (viewerId parametresi eklendi)
     @GetMapping("/{conversationId}/messages")
     public Page<ChatMessageResponse> getMessages(
             @PathVariable Long conversationId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam Long viewerId   // 🔥 yeni
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam Long viewerId
     ) {
         return chatService.getMessages(conversationId, page, size, viewerId);
     }
 
-    // 👇 SEEN endpoint'i
     @PostMapping("/{conversationId}/seen")
-    public void markSeen(
-            @PathVariable Long conversationId,
-            @RequestParam Long viewerId
-    ) {
+    public void markSeen(@PathVariable Long conversationId, @RequestParam Long viewerId) {
         chatService.markConversationAsSeen(conversationId, viewerId);
+    }
+
+    @PostMapping("/{messageId}/reaction")
+    public void reactToMessage(@PathVariable Long messageId, @RequestParam Long viewerId, @RequestParam String emoji) {
+        chatService.toggleReaction(messageId, viewerId, emoji);
+    }
+
+    @PutMapping("/{messageId}")
+    public void editMessage(@PathVariable Long messageId, @RequestParam Long userId, @RequestBody String newContent) {
+        chatService.editMessage(messageId, userId, newContent);
+    }
+
+    // 🔥 YENİ: Herkesten Sil (DELETE isteğine type parametresi ekledik)
+    @DeleteMapping("/{messageId}/everyone")
+    public void deleteForEveryone(@PathVariable Long messageId, @RequestParam Long userId) {
+        chatService.deleteMessageForEveryone(messageId, userId);
+    }
+
+    // 🔥 YENİ: Benden Sil
+    @DeleteMapping("/{messageId}/me")
+    public void deleteForMe(@PathVariable Long messageId, @RequestParam Long userId) {
+        chatService.deleteMessageForMe(messageId, userId);
     }
 }
