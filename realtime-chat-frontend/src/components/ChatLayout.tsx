@@ -31,7 +31,7 @@ import ContactInfoSidebar from "./ContactInfoSidebar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPaperPlane, faMicrophone, faTrash, faCheck, faPlus,
-  faFileAlt, faImages, faCamera, faUser, faChartBar, faCalendarAlt, faStickyNote,
+  faFileAlt, faImages, faCamera, faUser,
   faTimes, faFilePdf, faSpinner, faSmile, faReply, faCopy
 } from "@fortawesome/free-solid-svg-icons";
 import { compressImage } from "../utils/imageUtils";
@@ -66,15 +66,23 @@ const styles = `
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
 
+  .message-content img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 12px;
+    object-fit: cover;
+    max-height: 400px; /* Çok uzun resimleri sınırla */
+  }
+
   /* --- EMOJI PICKER STİLLERİ --- */
   .EmojiPickerReact.epr-main {
       border: none !important;
       border-radius: 24px !important;
       box-shadow: 0 10px 40px rgba(0,0,0,0.12) !important;
       font-family: 'Segoe UI', sans-serif !important;
-      --epr-picker-border-radius: 24px !important;
+      width: 100% !important;
       --epr-category-icon-active-color: #6F79FF !important;
-  }
+  } 
   
   .EmojiPickerReact button:focus, .EmojiPickerReact button:active, .EmojiPickerReact .epr-btn:focus {
       outline: none !important; box-shadow: none !important; background-color: transparent !important; border: none !important;
@@ -350,9 +358,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const handleTyping = useCallback((senderId: number) => {
     if (senderId === me.id) return;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    
+
     setTypingUserId(senderId);
-    
+
     typingTimeoutRef.current = setTimeout(() => {
       setTypingUserId(null);
       typingTimeoutRef.current = null;
@@ -371,19 +379,19 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         return [...prev, msg];
       });
       // Görüldü bilgisini güncelle
-      markConversationSeen(selectedConversation.id, me.id).catch(() => {});
-      
+      markConversationSeen(selectedConversation.id, me.id).catch(() => { });
+
       // Cache'i güncelle
       setMessageCache((prev) => {
-          const list = prev[msg.conversationId] || [];
-          if (list.some(m => m.id === msg.id)) return prev;
-          return { ...prev, [msg.conversationId]: [...list, msg] };
+        const list = prev[msg.conversationId] || [];
+        if (list.some(m => m.id === msg.id)) return prev;
+        return { ...prev, [msg.conversationId]: [...list, msg] };
       });
     });
 
     // B) Yazıyor... Eventini Dinle
     const unsubTyping = subscribe(`/topic/conversations/${selectedConversation.id}/typing`, (data: any) => {
-        handleTyping(data.senderId);
+      handleTyping(data.senderId);
     });
 
     return () => {
@@ -397,36 +405,53 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     if (!lastMessage) return;
 
     if (lastProcessedMessageId.current === lastMessage.id) {
-        return;
+      return;
     }
     if (selectedConversation && lastMessage.conversationId === selectedConversation.id) {
-  
-        lastProcessedMessageId.current = lastMessage.id;
-        return; 
+
+      lastProcessedMessageId.current = lastMessage.id;
+      return;
     }
     lastProcessedMessageId.current = lastMessage.id;
 
     setUsers(prevUsers => {
-        const updatedUsers = prevUsers.map(user => {
-            if (user.id === lastMessage.senderId) {
-                return {
-                    ...user,
-                    unreadCount: (user.unreadCount || 0) + 1,
-                    lastMessageText: lastMessage.content.startsWith("AUDIO::") ? "🎤 Sesli Mesaj" : lastMessage.content,
-                    lastMessageTime: formatTime(lastMessage.createdAt),
-                    lastMessageDate: new Date(lastMessage.createdAt).getTime()
-                };
-            }
-            return user;
-        });
-        return updatedUsers.sort((a, b) => (b.lastMessageDate || 0) - (a.lastMessageDate || 0));
+      const updatedUsers = prevUsers.map(user => {
+        if (user.id === lastMessage.senderId) {
+          return {
+            ...user,
+            unreadCount: (user.unreadCount || 0) + 1,
+            lastMessageText: lastMessage.content.startsWith("AUDIO::") ? "🎤 Sesli Mesaj" : lastMessage.content,
+            lastMessageTime: formatTime(lastMessage.createdAt),
+            lastMessageDate: new Date(lastMessage.createdAt).getTime()
+          };
+        }
+        return user;
+      });
+      return updatedUsers.sort((a, b) => (b.lastMessageDate || 0) - (a.lastMessageDate || 0));
     });
+
+    // ✅ MOBİL GERİ TUŞU YÖNETİMİ
+    useEffect(() => {
+      if (selectedConversation && isMobile) {
+        window.history.pushState({ chatOpen: true }, "");
+   
+        const handlePopState = () => {
+          setSelectedConversation(null);
+        };
+
+        window.addEventListener("popstate", handlePopState);
+
+        return () => {
+          window.removeEventListener("popstate", handlePopState);
+        };
+      }
+    }, [selectedConversation, isMobile]);
 
     // Cache'i güncelle
     setMessageCache((prev) => {
-        const list = prev[lastMessage.conversationId] || [];
-        if (list.some(m => m.id === lastMessage.id)) return prev;
-        return { ...prev, [lastMessage.conversationId]: [...list, lastMessage] };
+      const list = prev[lastMessage.conversationId] || [];
+      if (list.some(m => m.id === lastMessage.id)) return prev;
+      return { ...prev, [lastMessage.conversationId]: [...list, lastMessage] };
     });
 
   }, [lastMessage, selectedConversation]);
@@ -437,12 +462,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     // 2. Seçili mesaj listesini boşalt
     setSelectedIds([]);
     // 3. Yarım kalan yazıyı temizle
-    setNewMessage(""); 
+    setNewMessage("");
     // 4. Düzenleme modu açıksa kapat
-    setEditingMessage(null); 
+    setEditingMessage(null);
     // 5. Artı menüsü açıksa kapat
-    setPlusMenuOpen(false); 
-  }, [selectedConversation?.id]); 
+    setPlusMenuOpen(false);
+  }, [selectedConversation?.id]);
 
   // ✅ Kullanıcı Offline Olduğunda "Last Seen" Güncelle
   useEffect(() => {
@@ -464,10 +489,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   useEffect(() => {
     const load = async () => {
       const [userList, convList] = await Promise.all([listUsers(), listConversations()]);
-      
+
       const mappedUsers: ChatUser[] = userList.map(u => ({ ...u, unreadCount: 0 }));
       setUsers(mappedUsers);
-      
+
       setConversations(convList);
       const cache: Record<number, ChatMessageResponse[]> = {};
       await Promise.all(
@@ -492,12 +517,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     setPage(0);
     setHasMore(true);
     setIsLoadingHistory(false);
-    
+
     const history = await getMessages(conv.id, me.id, 0);
     if (history.length < 50) setHasMore(false);
-    
+
     const sortedHistory = [...history].filter(m => m !== null && m !== undefined).reverse();
-    
+
     setMessages(sortedHistory);
     setMessageCache((prev) => ({ ...prev, [conv.id]: sortedHistory }));
     markConversationSeen(conv.id, me.id).catch(() => { });
@@ -560,10 +585,10 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         setMessages(prev => prev.filter(m => m && !idsToDelete.includes(m.id)));
       } else {
         setMessages(prev => prev.map(m => {
-            if (!m) return m; 
-            return idsToDelete.includes(m.id) 
-                ? { ...m, content: "Bu mesaj silindi", deletedForEveryone: true } 
-                : m;
+          if (!m) return m;
+          return idsToDelete.includes(m.id)
+            ? { ...m, content: "Bu mesaj silindi", deletedForEveryone: true }
+            : m;
         }));
       }
 
@@ -651,7 +676,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
       const mediaUrl = await uploadMedia(fileToUpload);
       const fileSizeMB = (selectedFile.file.size / (1024 * 1024)).toFixed(2) + " MB";
       const contentString = `${selectedFile.type}::${mediaUrl}::${selectedFile.file.name}::${fileSizeMB}::${fileCaption}`;
- 
+
       sendMessage(selectedConversation.id, contentString, me.id);
 
       setSelectedFile(null);
@@ -883,7 +908,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const peer = (() => {
     if (!selectedConversation) return null;
     const peerId = selectedConversation.user1Id === me.id ? selectedConversation.user2Id : selectedConversation.user1Id;
-    // ✅ DÜZELTME: ChatUser üzerinden erişim
     const userObj = users.find((u) => u.id === peerId);
     return {
       id: peerId,
@@ -895,15 +919,31 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
   const isPeerOnline = peer ? onlineIds.includes(peer.id) : false;
   let lastSeenText: string | null = null;
 
+  const formatLastSeen = (dateString: string) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    const isToday = date.getDate() === now.getDate() && 
+                    date.getMonth() === now.getMonth() && 
+                    date.getFullYear() === now.getFullYear();
+    
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    if (isToday) return `Bugün ${timeStr}`;
+    
+    return `${date.toLocaleDateString("tr-TR")} ${timeStr}`;
+  };
+
   if (peer) {
     const currentPeerUser = users.find(u => u.id === peer.id);
     if (currentPeerUser && currentPeerUser.lastSeen) {
-      lastSeenText = "Son görülme " + formatTime(currentPeerUser.lastSeen);
+      lastSeenText = "Son görülme " + formatLastSeen(currentPeerUser.lastSeen);
     } else {
       const peerMessages = messages.filter((m) => m && m.senderId === peer.id);
       if (peerMessages.length > 0) {
         const latest = peerMessages[peerMessages.length - 1];
-        lastSeenText = "Son görülme " + formatTime(latest.createdAt);
+        lastSeenText = "Son görülme " + formatLastSeen(latest.createdAt);
       }
     }
   }
@@ -912,12 +952,12 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
     .filter((u) => u.id !== me.id)
     .map((user) => {
       const conv = conversations.find((c) => (c.user1Id === me.id && c.user2Id === user.id) || (c.user2Id === me.id && c.user1Id === user.id));
-      
+
       const rawMessages = conv ? messageCache[conv.id] ?? [] : [];
       const convMessages = rawMessages.filter(m => m !== null && m !== undefined);
 
       const lastMessage = convMessages.length > 0 ? convMessages[convMessages.length - 1] : undefined;
-      
+
       let lastMessageText = "Henüz mesaj yok";
       if (lastMessage && lastMessage.content) {
         if (lastMessage.content.startsWith("AUDIO::")) lastMessageText = "🎤 Sesli Mesaj";
@@ -926,8 +966,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
         else if (lastMessage.content.startsWith("DOCUMENT::")) lastMessageText = "📄 Belge";
         else lastMessageText = lastMessage.content;
       }
-
-      // Eğer Socket'ten gelen canlı veri varsa onu kullan, yoksa cache'den hesapla
       const displayUnreadCount = user.unreadCount || convMessages.filter((m) => m && m.senderId && m.senderId !== me.id && m.status !== "SEEN").length;
       const displayLastMessageText = user.lastMessageText || lastMessageText;
       const displayLastMessageTime = user.lastMessageTime || (lastMessage ? formatTime(lastMessage.createdAt) : "");
@@ -1109,7 +1147,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           /* 2. DURUM: DUYURU KANALI SEÇİLİYSE */
           selectedConversation.id === -999 ? (
             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                {/* ... (Duyuru ekranı kodları aynı, değişiklik yok) ... */}
+              {/* ... (Duyuru ekranı kodları aynı, değişiklik yok) ... */}
               <div style={{ height: "65px", background: "white", padding: "0 20px", display: "flex", alignItems: "center", borderBottom: "1px solid #EAE6FF", gap: 15, boxShadow: "0 2px 5px rgba(0,0,0,0.02)" }}>
                 {isMobile && <button onClick={() => setSelectedConversation(null)} style={{ border: "none", background: "transparent", fontSize: "24px", color: "#3E3663" }}>‹</button>}
                 <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg, #FF9800, #FF5722)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", boxShadow: "0 2px 8px rgba(255, 152, 0, 0.3)" }}>📢</div>
@@ -1342,48 +1380,79 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
 
               {/* --- INPUT ALANI --- */}
               {!isSelectionMode && (
-                <div style={{ minHeight: "80px", padding: "0 20px 20px 20px", display: "flex", alignItems: "center", gap: 12, position: "relative", zIndex: 10 }}>
+                <div style={{ minHeight: "80px", padding: "0 10px 10px 10px", display: "flex", alignItems: "end", gap: 8, position: "relative", zIndex: 10 }}>
+
                   {/* Kamera Modal */}
                   {showCameraModal && (
-                    <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                      <div style={{ position: "relative", width: "90%", maxWidth: "600px", borderRadius: "10px", overflow: "hidden" }}><video ref={videoRef} autoPlay playsInline style={{ width: "100%", display: "block" }} /><canvas ref={canvasRef} style={{ display: "none" }} /></div>
-                      <div style={{ display: "flex", gap: 20, marginTop: 20 }}><button onClick={stopCamera} style={{ padding: "10px 20px", borderRadius: "20px", border: "none", background: "#FF4D4D", color: "white" }}>İptal</button><button onClick={capturePhoto} style={{ width: "60px", height: "60px", borderRadius: "50%", border: "4px solid white", background: "transparent" }}></button></div>
+                    <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "black", zIndex: 9999, display: "flex", flexDirection: "column" }}>
+                      <div style={{ flex: 1, position: "relative" }}>
+                        <video ref={videoRef} autoPlay playsInline style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <canvas ref={canvasRef} style={{ display: "none" }} />
+                      </div>
+                      <div style={{ height: "120px", display: "flex", alignItems: "center", justifyContent: "space-around", background: "rgba(0,0,0,0.5)" }}>
+                        <button onClick={stopCamera} style={{ color: "white", background: "transparent", border: "none", fontSize: "16px" }}>İptal</button>
+                        <button onClick={capturePhoto} style={{ width: "70px", height: "70px", borderRadius: "50%", border: "4px solid white", background: "rgba(255,255,255,0.3)" }}></button>
+                        <div style={{ width: "40px" }}></div> {/* Boşluk için */}
+                      </div>
                     </div>
                   )}
 
                   {isRecording ? (
-                    <><button onClick={cancelRecording} style={{ background: "white", border: "none", color: "#FF4D4D", width: 50, height: 50, borderRadius: "50%" }}><FontAwesomeIcon icon={faTrash} /></button><div style={{ flex: 1, background: "white", borderRadius: 30, height: 50, display: "flex", alignItems: "center", justifyContent: "center" }}>{formatDuration(recordingDuration)}</div><button onClick={finishRecording} style={{ background: "#00C853", color: "white", width: 50, height: 50, borderRadius: "50%", border: "none" }}><FontAwesomeIcon icon={faCheck} /></button></>
+                    /* ✅ DÜZELTME: Ses Kaydı UI */
+                    <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "white", padding: "10px", borderRadius: "30px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
+                      <div style={{ width: 10, height: 10, background: "#FF4D4D", borderRadius: "50%", animation: "bounce 1s infinite" }}></div>
+                      {/* Timer için min-width veriyoruz ki kaybolmasın */}
+                      <div style={{ flex: 1, fontWeight: "bold", color: "#FF4D4D", fontSize: "16px", minWidth: "60px" }}>
+                        {formatDuration(recordingDuration)}
+                      </div>
+                      <button onClick={cancelRecording} style={{ background: "#FFEBEE", border: "none", color: "#FF4D4D", width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}><FontAwesomeIcon icon={faTrash} /></button>
+                      <button onClick={finishRecording} style={{ background: "#E8F5E9", color: "#2E7D32", width: 40, height: 40, borderRadius: "50%", border: "none", display: "flex", alignItems: "center", justifyContent: "center" }}><FontAwesomeIcon icon={faCheck} /></button>
+                    </div>
                   ) : (
                     <>
                       <input type="file" ref={documentInputRef} onChange={(e) => handleFileSelect(e, "DOCUMENT")} style={{ display: "none" }} />
                       <input type="file" ref={galleryInputRef} onChange={(e) => handleFileSelect(e, "IMAGE")} style={{ display: "none" }} />
-                      <div style={{ flex: 1, display: "flex", alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: "25px", padding: "5px 10px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", height: "50px", position: "relative" }}>
 
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: "#FFFFFF", borderRadius: "24px", padding: "5px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", position: "relative" }}>
+
+                        {/* ✅ DÜZELTME: Düzenleme Paneli - Inputun ÜSTÜNE alındı */}
                         {editingMessage && (
-                          <div style={{ position: "absolute", bottom: "60px", left: "0px", right: "0px", background: "#f0f0f0", padding: "10px", borderRadius: "10px", borderLeft: "4px solid #6F79FF", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 50, fontSize: "13px", color: "#666" }}>
-                            <div><span style={{ color: "#6F79FF", fontWeight: "bold" }}>Düzenleniyor:</span> {editingMessage.content.substring(0, 50)}...</div>
-                            <button onClick={() => { setEditingMessage(null); setNewMessage(""); }} style={{ border: "none", background: "transparent", color: "#FF4D4D", cursor: "pointer", fontWeight: "bold" }}>✕ İptal</button>
+                          <div style={{
+                            padding: "8px 15px",
+                            borderBottom: "1px solid #eee",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: "12px",
+                            color: "#666",
+                            backgroundColor: "#FAFAFA",
+                            borderTopLeftRadius: "24px",
+                            borderTopRightRadius: "24px"
+                          }}>
+                            <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                              <span style={{ color: "#6F79FF", fontWeight: "bold" }}>Düzenleniyor</span>
+                              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "200px" }}>{editingMessage.content}</span>
+                            </div>
+                            <button onClick={() => { setEditingMessage(null); setNewMessage(""); }} style={{ border: "none", background: "transparent", color: "#FF4D4D", cursor: "pointer", padding: "5px" }}>✕</button>
                           </div>
                         )}
 
                         {showEmojiPicker && (
-                          <div style={{ position: "absolute", bottom: "80px", left: "0", zIndex: 100 }}>
-                            <EmojiPicker onEmojiClick={onEmojiClick} autoFocusSearch={false} theme={Theme.LIGHT} emojiStyle={EmojiStyle.APPLE} width="100%" height={400} skinTonesDisabled={true} searchDisabled={false} previewConfig={{ showPreview: false }} />
+                          <div style={{ position: "absolute", bottom: "60px", left: "0", zIndex: 100, width: "100%" }}>
+                            <EmojiPicker onEmojiClick={onEmojiClick} autoFocusSearch={false} theme={Theme.LIGHT} emojiStyle={EmojiStyle.APPLE} width="100%" height={350} skinTonesDisabled={true} searchDisabled={false} previewConfig={{ showPreview: false }} />
                           </div>
                         )}
 
+                        {/* Artı Menüsü */}
                         {isPlusMenuOpen && (
-                          <div style={{ position: "absolute", bottom: "80px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "15px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "200px", animation: "popupMenuEnter 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)", transformOrigin: "bottom left" }}>
+                          <div style={{ position: "absolute", bottom: "60px", left: "0", backgroundColor: "#FFFFFF", borderRadius: "16px", padding: "15px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", display: "flex", flexDirection: "column", gap: "15px", zIndex: 100, minWidth: "180px", animation: "popupMenuEnter 0.2s ease" }}>
                             {[
                               { icon: faFileAlt, label: "Belge", color: "#7F66FF", action: () => documentInputRef.current?.click() },
                               { icon: faImages, label: "Galeri", color: "#007BFF", action: () => galleryInputRef.current?.click() },
                               { icon: faCamera, label: "Kamera", color: "#FF4081", action: startCamera },
                               { icon: faUser, label: "Kişi", color: "#009688", action: () => alert("Kişi yakında...") },
-                              { icon: faChartBar, label: "Anket", color: "#FFC107", action: () => alert("Anket yakında...") },
-                              { icon: faCalendarAlt, label: "Etkinlik", color: "#FF9800", action: () => alert("Etkinlik yakında...") },
-                              { icon: faStickyNote, label: "Çıkartma", color: "#4CAF50", action: () => alert("Çıkartma yakında...") },
                             ].map((item, idx) => (
-                              <div key={idx} onClick={() => { item.action(); if (item.label !== "Kamera") setPlusMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", transition: "0.2s" }} onMouseEnter={(e) => e.currentTarget.style.opacity = "0.7"} onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}>
+                              <div key={idx} onClick={() => { item.action(); if (item.label !== "Kamera") setPlusMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }}>
                                 <div style={{ width: "35px", height: "35px", borderRadius: "50%", background: `linear-gradient(135deg, ${item.color}, ${item.color}88)`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "14px" }}><FontAwesomeIcon icon={item.icon} /></div>
                                 <span style={{ fontSize: "14px", fontWeight: "600", color: "#3E3663" }}>{item.label}</span>
                               </div>
@@ -1391,23 +1460,25 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                           </div>
                         )}
 
-                        <button onClick={() => { setPlusMenuOpen(!isPlusMenuOpen); setShowEmojiPicker(false); }} style={{ background: "transparent", border: "none", color: isPlusMenuOpen ? "#6F79FF" : "#9B95C9", fontSize: "20px", padding: "8px", cursor: "pointer", transform: isPlusMenuOpen ? "rotate(45deg)" : "rotate(0deg)", transition: "transform 0.2s" }}><FontAwesomeIcon icon={faPlus} /></button>
-                        <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setPlusMenuOpen(false); }} style={{ background: "transparent", border: "none", color: showEmojiPicker ? "#6F79FF" : "#9B95C9", fontSize: "20px", padding: "8px", cursor: "pointer" }}><FontAwesomeIcon icon={faSmile} /></button>
-                        <input
-                          ref={inputRef}
-                          style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "16px", color: "#3E3663", height: "100%", padding: "0 5px" }}
-                          value={newMessage}
-                          onChange={handleInputChange}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleSend();
-                            }
-                          }}
-                          placeholder="Bir mesaj yazın"
-                        />
+                        <div style={{ display: "flex", alignItems: "center", padding: "0 5px" }}>
+                          <button onClick={() => { setPlusMenuOpen(!isPlusMenuOpen); setShowEmojiPicker(false); }} style={{ background: "transparent", border: "none", color: isPlusMenuOpen ? "#6F79FF" : "#9B95C9", fontSize: "20px", padding: "10px", cursor: "pointer", transform: isPlusMenuOpen ? "rotate(45deg)" : "rotate(0deg)", transition: "transform 0.2s" }}><FontAwesomeIcon icon={faPlus} /></button>
+
+                          <input
+                            ref={inputRef}
+                            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "16px", color: "#3E3663", padding: "12px 5px", minHeight: "24px" }}
+                            value={newMessage}
+                            onChange={handleInputChange}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSend(); } }}
+                            placeholder="Mesaj yazın..."
+                          />
+
+                          <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setPlusMenuOpen(false); }} style={{ background: "transparent", border: "none", color: showEmojiPicker ? "#6F79FF" : "#9B95C9", fontSize: "20px", padding: "10px", cursor: "pointer" }}><FontAwesomeIcon icon={faSmile} /></button>
+                        </div>
                       </div>
-                      <button onClick={() => { if (newMessage.trim()) handleSend(); else startRecording(); }} style={{ width: "50px", height: "50px", borderRadius: "50%", backgroundColor: "#6F79FF", color: "white", border: "none", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><FontAwesomeIcon icon={newMessage.trim() ? faPaperPlane : faMicrophone} /></button>
+
+                      <button onClick={() => { if (newMessage.trim()) handleSend(); else startRecording(); }} style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "#6F79FF", color: "white", border: "none", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", marginBottom: "2px", boxShadow: "0 4px 10px rgba(111, 121, 255, 0.3)" }}>
+                        <FontAwesomeIcon icon={newMessage.trim() ? faPaperPlane : faMicrophone} />
+                      </button>
                     </>
                   )}
                 </div>
