@@ -14,9 +14,9 @@ public class Reaction {
     private String emoji; // Örn: "❤️", "👍"
 
     @Column(nullable = false)
-    private Long userId; // Tepkiyi veren kullanıcının ID'si
+    private Long userId;
 
-    @JsonIgnore // Sonsuz döngüye girmemesi için JSON'da bu alanı gizliyoruz
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "announcement_id", nullable = false)
     private Announcement announcement;

@@ -17,7 +17,7 @@ public class Announcement {
     private String content;
 
     @Column(columnDefinition = "TEXT")
-    private String mediaUrl; // Resim veya Video URL'si
+    private String mediaUrl;
 
     private Instant createdAt;
 

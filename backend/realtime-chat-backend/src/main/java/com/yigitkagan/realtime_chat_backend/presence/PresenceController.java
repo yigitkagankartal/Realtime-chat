@@ -15,7 +15,6 @@ public class PresenceController {
         this.presenceService = presenceService;
     }
 
-    // Frontend her birkaç saniyede bir buraya userId ile POST atacak
     public record HeartbeatRequest(Long userId) {}
 
     @PostMapping("/heartbeat")
@@ -24,8 +23,6 @@ public class PresenceController {
             presenceService.heartbeat(request.userId());
         }
     }
-
-    // Online kullanıcı ID listesini döner
     @GetMapping("/online")
     public Set<Long> onlineUsers() {
         // Son 10 saniyede nabız gönderenleri online say

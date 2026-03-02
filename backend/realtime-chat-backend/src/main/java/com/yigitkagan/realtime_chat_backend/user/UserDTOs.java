@@ -10,7 +10,7 @@ public class UserDTOs {
             String profilePictureUrl,
             String about,
             boolean isActivated,
-            boolean isPhoneNumberVisible, // <--- EKLENDİ
+            boolean isPhoneNumberVisible,
             String role
     ) {}
 

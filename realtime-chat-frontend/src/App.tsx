@@ -64,7 +64,6 @@ const App: React.FC = () => {
   }
 
   // ✅ Aktifse Sohbete git
-  // 🔥 BURAYI GÜNCELLEDİK: SocketProvider ile sarmaladık.
   return (
     <SocketProvider userId={me.id}>
       <ChatLayout

@@ -38,13 +38,13 @@ public class MessageRestController {
         chatService.editMessage(messageId, userId, newContent);
     }
 
-    // 🔥 YENİ: Herkesten Sil (DELETE isteğine type parametresi ekledik)
+    // Herkesten Sil
     @DeleteMapping("/{messageId}/everyone")
     public void deleteForEveryone(@PathVariable Long messageId, @RequestParam Long userId) {
         chatService.deleteMessageForEveryone(messageId, userId);
     }
 
-    // 🔥 YENİ: Benden Sil
+    // Benden Sil
     @DeleteMapping("/{messageId}/me")
     public void deleteForMe(@PathVariable Long messageId, @RequestParam Long userId) {
         chatService.deleteMessageForMe(messageId, userId);

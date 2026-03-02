@@ -13,7 +13,6 @@ import java.util.Optional;
 @Service
 public class ActivationAuthService {
 
-    // 🔒 DEĞİŞİKLİK BURADA: Artık kodun içinde yazmıyor, application.properties'den geliyor.
     @Value("${app.activation.master-key}")
     private String masterActivationKey;
 
@@ -72,8 +71,6 @@ public class ActivationAuthService {
     }
 
     public ActivationLoginResponse verifyAccountActivation(VerifyActivationRequest request) {
-        // ✅ KONTROL BURADA YAPILIYOR
-        // this.masterActivationKey artık "7134zfT=" değerini taşıyor.
         if (!masterActivationKey.equals(request.masterKey())) {
             throw new RuntimeException("Hatalı Aktivasyon Kodu! Erişim reddedildi.");
         }

@@ -1,6 +1,4 @@
 import api from "./client";
-
-// Backend'deki User.java ile uyumlu tip
 export interface MeResponse {
   id: number;
   displayName: string;
@@ -8,7 +6,6 @@ export interface MeResponse {
   profilePictureUrl?: string;
   about?: string;
   isActivated: boolean;
-  // ✅ EKSİK ALANLAR EKLENDİ
   isPhoneNumberVisible: boolean;
   role: "ADMIN" | "USER";
 }
@@ -21,7 +18,6 @@ interface ActivationLoginResponse {
   profilePictureUrl?: string;
   about?: string;
   isActivated: boolean;
-  // Backend bu alanları dönmüyorsa varsayılan atayacağız
   role?: "ADMIN" | "USER"; 
 }
 
@@ -46,7 +42,6 @@ export const loginWithActivation = async (
     profilePictureUrl: data.profilePictureUrl,
     about: data.about,
     isActivated: data.isActivated,
-    // ✅ EKSİK ALANLARI VARSAYILAN OLARAK DOLDURDUK
     isPhoneNumberVisible: false, 
     role: data.role || "USER" 
   };
@@ -69,7 +64,6 @@ export const verifyMasterKey = async (phoneNumber: string, masterKey: string): P
     profilePictureUrl: data.profilePictureUrl,
     about: data.about,
     isActivated: true,
-    // ✅ EKSİK ALANLARI DOLDURDUK
     isPhoneNumberVisible: false,
     role: data.role || "USER"
   };
@@ -102,7 +96,6 @@ export const updateProfile = async (data: {
   isPhoneNumberVisible?: boolean;
 }): Promise<MeResponse> => {
   const res = await api.put<MeResponse>("/api/users/me", data);
-  // Dönen veriyi tip güvenliğine almak için eksikleri tamamlıyoruz
   const d = res.data;
   return {
       ...d,

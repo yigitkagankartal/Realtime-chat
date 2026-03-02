@@ -8,9 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public interface MessageDeletionsRepository extends JpaRepository<Message, Long> {
-    // Not: MessageDeletions entity'si oluşturmadık, native query ile hallediyoruz
-    // Pratik çözüm.
-
     @Query(value = "SELECT COUNT(*) > 0 FROM message_deletions WHERE message_id = :messageId AND user_id = :userId", nativeQuery = true)
     boolean existsByMessageIdAndUserId(Long messageId, Long userId);
 

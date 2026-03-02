@@ -54,7 +54,7 @@ public class PresenceEventListener {
     private void broadcastOnlineUsers() {
         Set<Long> onlineUserIds = presenceService.getOnlineUsers();
 
-        System.out.println("ONLINE USERS: " + onlineUserIds); // 👈 BUNU EKLE
+        System.out.println("ONLINE USERS: " + onlineUserIds);
 
         messagingTemplate.convertAndSend("/topic/online-users", onlineUserIds);
     }

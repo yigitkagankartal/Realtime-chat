@@ -1147,7 +1147,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
           /* 2. DURUM: DUYURU KANALI SEÇİLİYSE */
           selectedConversation.id === -999 ? (
             <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-              {/* ... (Duyuru ekranı kodları aynı, değişiklik yok) ... */}
               <div style={{ height: "65px", background: "white", padding: "0 20px", display: "flex", alignItems: "center", borderBottom: "1px solid #EAE6FF", gap: 15, boxShadow: "0 2px 5px rgba(0,0,0,0.02)" }}>
                 {isMobile && <button onClick={() => setSelectedConversation(null)} style={{ border: "none", background: "transparent", fontSize: "24px", color: "#3E3663" }}>‹</button>}
                 <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg, #FF9800, #FF5722)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", boxShadow: "0 2px 8px rgba(255, 152, 0, 0.3)" }}>📢</div>
@@ -1266,7 +1265,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
             <>
               {/* --- HEADER --- */}
               {isSelectionMode ? (
-                /* 🔥 SEÇİM MODU BAŞLIĞI */
+                /* SEÇİM MODU BAŞLIĞI */
                 <div style={{ height: "65px", background: "white", padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 20, borderBottom: "1px solid #ddd" }}>
                   <button onClick={() => { setIsSelectionMode(false); setSelectedIds([]); }} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer" }}>✕</button>
                   <div style={{ fontSize: "18px", fontWeight: "600" }}>{selectedIds.length} seçildi</div>
@@ -1398,10 +1397,9 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                   )}
 
                   {isRecording ? (
-                    /* ✅ DÜZELTME: Ses Kaydı UI */
+                    /* Ses Kaydı UI */
                     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "white", padding: "10px", borderRadius: "30px", boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }}>
                       <div style={{ width: 10, height: 10, background: "#FF4D4D", borderRadius: "50%", animation: "bounce 1s infinite" }}></div>
-                      {/* Timer için min-width veriyoruz ki kaybolmasın */}
                       <div style={{ flex: 1, fontWeight: "bold", color: "#FF4D4D", fontSize: "16px", minWidth: "60px" }}>
                         {formatDuration(recordingDuration)}
                       </div>
@@ -1414,8 +1412,6 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({ me, onLogout }) => {
                       <input type="file" ref={galleryInputRef} onChange={(e) => handleFileSelect(e, "IMAGE")} style={{ display: "none" }} />
 
                       <div style={{ flex: 1, display: "flex", flexDirection: "column", backgroundColor: "#FFFFFF", borderRadius: "24px", padding: "5px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", position: "relative" }}>
-
-                        {/* ✅ DÜZELTME: Düzenleme Paneli - Inputun ÜSTÜNE alındı */}
                         {editingMessage && (
                           <div style={{
                             padding: "8px 15px",

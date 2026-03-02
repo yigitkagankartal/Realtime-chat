@@ -47,8 +47,6 @@ public class UserController {
 
         user.setProfilePictureUrl(imageUrl);
         userRepository.save(user);
-
-        // ✅ GÜNCELLENDİ: Yeni alanlar eklendi
         return ResponseEntity.ok(new UserMeResponse(
                 user.getId(),
                 user.getEmail(),
@@ -61,20 +59,16 @@ public class UserController {
                 user.getRole().name()
         ));
     }
-
     // Kullanıcı Listesi (Gizlilik Ayarına Göre Filtreli)
     @GetMapping
     public List<UserListItem> listUsers(Authentication authentication) {
         String currentEmail = (String) authentication.getPrincipal();
 
-        // Admin olup olmadığını kontrol edebiliriz (Opsiyonel)
-        // User currentUser = userRepository.findByEmail(currentEmail).orElseThrow();
-
         return userRepository.findAllByIsActivatedTrue()
                 .stream()
                 .filter(u -> !u.getEmail().equals(currentEmail))
                 .map(u -> {
-                    // ✅ GİZLİLİK MANTIĞI:
+                    //  GİZLİLİK MANTIĞI:
                     // Eğer kullanıcı numarasını gizlediyse, boş string veya "Gizli" dön.
                     String phoneToSend = u.isPhoneNumberVisible() ? u.getPhoneNumber() : "";
 
@@ -84,7 +78,7 @@ public class UserController {
                             u.getDisplayName(),
                             u.getProfilePictureUrl(),
                             u.getAbout(),
-                            phoneToSend // Gizlenmiş veya açık numara
+                            phoneToSend
                     );
                 })
                 .toList();
@@ -112,14 +106,12 @@ public class UserController {
             user.setProfilePictureUrl(request.getProfilePictureUrl());
         }
 
-        // ✅ EKLENDİ: Telefon Numarası Görünürlüğü Ayarı
         if (request.getIsPhoneNumberVisible() != null) {
             user.setPhoneNumberVisible(request.getIsPhoneNumberVisible());
         }
 
         userRepository.save(user);
 
-        // ✅ GÜNCELLENDİ: Response'a yeni alanlar eklendi
         return new UserMeResponse(
                 user.getId(),
                 user.getEmail(),
@@ -139,7 +131,6 @@ public class UserController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // ✅ GÜNCELLENDİ
         return new UserMeResponse(
                 user.getId(),
                 user.getEmail(),
@@ -163,7 +154,6 @@ public class UserController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Kullanıcı bulunamadı"));
 
-        // ✅ GİZLİLİK MANTIĞI BURADA DA GEÇERLİ
         String phoneToSend = user.isPhoneNumberVisible() ? user.getPhoneNumber() : "";
 
         return new UserListItem(

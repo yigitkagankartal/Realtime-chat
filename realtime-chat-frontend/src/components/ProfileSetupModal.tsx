@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { updateProfile } from "../api/auth";
-import { uploadProfileImage } from "../api/user"; // ✅ Bu fonksiyonu import etmelisin
+import { uploadProfileImage } from "../api/user";
 import type { MeResponse } from "../api/auth";
 
 interface ProfileSetupModalProps {
@@ -11,7 +11,7 @@ const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ onComplete }) => 
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // ✅ Gerçek dosyayı tutmak için state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,7 +44,6 @@ const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ onComplete }) => 
 
       // 2. Eğer dosya seçildiyse, onu da yükle
       if (selectedFile) {
-        // Backend'deki /me/image endpoint'ine atıyoruz
         currentUser = await uploadProfileImage(selectedFile);
       }
 

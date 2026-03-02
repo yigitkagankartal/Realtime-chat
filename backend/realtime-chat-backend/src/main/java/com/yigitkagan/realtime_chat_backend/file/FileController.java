@@ -36,7 +36,4 @@ public class FileController {
             return ResponseEntity.status(500).body(response);
         }
     }
-
-    // NOT: @GetMapping("/{fileName:.+}") metodunu SİLDİK.
-    // Çünkü artık resimleri biz sunmuyoruz, Cloudinary linki üzerinden direkt açılıyor.
 }

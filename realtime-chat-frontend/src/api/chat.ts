@@ -112,7 +112,6 @@ export const uploadMedia = async (file: File | Blob): Promise<string> => {
 
 // Duyuruları getir
 export const getAnnouncements = async () => {
-  // api.get zaten base url ve auth header'ı halleder
   const res = await api.get("/api/announcements");
   return res.data;
 };
@@ -148,13 +147,10 @@ export const updateAnnouncement = async (id: number, userId: number, content: st
 };
 
 export const reactToMessage = async (messageId: number, userId: number, emoji: string) => {
-  // Backend'de yazdığımız endpoint: POST /api/conversations/{messageId}/reaction
   await api.post(`/api/conversations/${messageId}/reaction`, null, {
     params: { userId, emoji }
   });
 };
-
-// src/api/chat.ts dosyasının en altına ekle:
 
 // Mesaj Düzenle
 export const editMessage = async (messageId: number, userId: number, newContent: string) => {

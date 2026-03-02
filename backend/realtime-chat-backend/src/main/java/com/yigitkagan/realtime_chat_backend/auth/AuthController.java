@@ -16,8 +16,6 @@ public class AuthController {
     public AuthController(ActivationAuthService activationAuthService) {
         this.activationAuthService = activationAuthService;
     }
-
-    // 1. Mevcut Login Endpoint'i
     @PostMapping("/activate")
     public ResponseEntity<ActivationLoginResponse> activate(
             @RequestBody ActivationLoginRequest request
@@ -26,8 +24,6 @@ public class AuthController {
                 activationAuthService.loginWithActivationCode(request);
         return ResponseEntity.ok(response);
     }
-
-    // 2. ✅ EKSİK OLAN KISIM: Master Key Doğrulama Endpoint'i
     @PostMapping("/verify-master-key")
     public ResponseEntity<ActivationLoginResponse> verifyMasterKey(
             @RequestBody VerifyActivationRequest request

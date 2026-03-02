@@ -71,14 +71,10 @@ public class ChatService {
         // 1. Sohbet odasındaki herkes (aktif sohbet ekranı için - ANLIK İLETİŞİM)
         messagingTemplate.convertAndSend("/topic/conversations/" + conversation.getId(), response);
 
-        // 2. 🔥 GÜNCELLEME: Alıcıya özel bildirim gönder (Topic Notification Yöntemi)
-        // Bu yöntem "User Principal" karmaşasını ortadan kaldırır ve mesajı garanti iletir.
+        // 2. Alıcıya özel bildirim gönder (Topic Notification Yöntemi)
         Long recipientId = conversation.getUser1().getId().equals(sender.getId())
                 ? conversation.getUser2().getId()
                 : conversation.getUser1().getId();
-
-        // "/topic/notifications/{userId}" kanalına atıyoruz.
-        // Frontend tarafında SocketContext.tsx bu kanalı dinleyecek.
         messagingTemplate.convertAndSend("/topic/notifications/" + recipientId, response);
 
         return response;
